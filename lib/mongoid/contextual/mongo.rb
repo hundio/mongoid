@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 # encoding: utf-8
 require "mongoid/contextual/atomic"
 require "mongoid/contextual/aggregable/mongo"
@@ -299,6 +300,8 @@ module Mongoid
       # @param [ Array<Float> ] coordinates The coordinates.
       #
       # @return [ GeoNear ] The GeoNear command.
+      #
+      # @deprecated
       #
       # @since 3.1.0
       def geo_near(coordinates)

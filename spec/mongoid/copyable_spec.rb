@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # -*- coding: utf-8 -*-
 require "spec_helper"
 
@@ -33,6 +35,10 @@ describe Mongoid::Copyable do
 
       let!(:game) do
         person.build_game(name: "Tron")
+      end
+
+      let!(:name_translations) do
+        person.name.translations.build(language: 'en')
       end
 
       context "when the document has an id field in the database" do
@@ -245,12 +251,24 @@ describe Mongoid::Copyable do
             expect(copy.addresses).to eq(person.addresses)
           end
 
+          it "copys deep embeds many documents" do
+            expect(copy.name.translations).to eq(person.name.translations)
+          end
+
           it "sets the embedded many documents as new" do
             expect(copy.addresses.first).to be_new_record
           end
 
+          it "sets the deep embedded many documents as new" do
+            expect(copy.name.translations.first).to be_new_record
+          end
+
           it "creates new embeds many instances" do
             expect(copy.addresses).to_not equal(person.addresses)
+          end
+
+          it "creates new deep embeds many instances" do
+            expect(copy.name.translations).to_not equal(person.name.translations)
           end
 
           it "copys embeds one documents" do

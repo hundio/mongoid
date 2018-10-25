@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "spec_helper"
 
 describe Mongoid::PersistenceContext do
@@ -536,7 +538,7 @@ describe Mongoid::PersistenceContext do
     end
 
     before do
-      Mongoid.clients[:alternative] = { database: :mongoid_test, hosts: [ "#{HOST}:#{PORT}" ] }
+      Mongoid.clients[:alternative] = { database: :mongoid_test, hosts: SpecConfig.instance.addresses }
     end
 
     after do

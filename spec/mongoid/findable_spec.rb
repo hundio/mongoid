@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "spec_helper"
 
 describe Mongoid::Findable do
@@ -10,7 +12,7 @@ describe Mongoid::Findable do
     end
 
     it "returns the distinct values for the field" do
-      expect(Band.distinct(:name)).to eq([ "Tool", "Photek" ])
+      expect(Band.distinct(:name).sort).to eq([ "Photek", "Tool" ])
     end
   end
 

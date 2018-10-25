@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "spec_helper"
 
 describe "Polymorphic Associations" do
@@ -95,6 +97,65 @@ describe "Polymorphic Associations" do
 
       it "returns false" do
         expect(Survey.new).to_not be_polymorphic
+      end
+    end
+  end
+
+  context 'when the relation is touchable' do
+
+    context 'when the relation is embedded' do
+
+      let(:define_classes) do
+
+        class FirstOwner
+          include Mongoid::Document
+
+          embeds_one :owned, class_name: 'Owned', as: :embedded_relation_polymorphic_touch_owner
+        end
+
+        class SecondOwner
+          include Mongoid::Document
+
+          embeds_one :owned, class_name: 'Owned', as: :embedded_relation_polymorphic_touch_owner
+        end
+
+        class Owned
+          include Mongoid::Document
+
+          embedded_in :embedded_relation_polymorphic_touch_owner, polymorphic: true, touch: true
+        end
+      end
+
+      it 'successfully defines the touch method' do
+       expect { define_classes }.not_to raise_error
+      end
+    end
+
+    context 'when the relation is not embedded' do
+
+      let(:define_classes) do
+
+        class FirstOwner
+          include Mongoid::Document
+
+          has_one :owned, class_name: 'Owned', as: :belongs_relation_polymorphic_touch_owner
+        end
+
+        class SecondOwner
+          include Mongoid::Document
+
+          has_one :owned, class_name: 'Owned', as: :belongs_relation_polymorphic_touch_owner
+        end
+
+        class Owned
+          include Mongoid::Document
+
+          belongs_to :belongs_relation_polymorphic_touch_owner, polymorphic: true, touch: true
+        end
+      end
+
+      it 'successfully defines the touch method' do
+       expect { define_classes }.not_to raise_error
       end
     end
   end

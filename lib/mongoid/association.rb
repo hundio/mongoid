@@ -1,9 +1,10 @@
+# frozen_string_literal: true
+
 require 'mongoid/association/accessors'
 require 'mongoid/association/builders'
 require 'mongoid/association/bindable'
 require 'mongoid/association/depending'
 require 'mongoid/association/proxy'
-require 'mongoid/association/touchable'
 
 require 'mongoid/association/many'
 require 'mongoid/association/one'

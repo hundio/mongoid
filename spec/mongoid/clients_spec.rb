@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "spec_helper"
 
 describe Mongoid::Clients do
@@ -427,7 +429,7 @@ describe Mongoid::Clients do
       let(:client_name) { :alternative }
 
       before do
-        Mongoid.clients[client_name] = { database: database_id_alt, hosts: [ "#{HOST}:#{PORT}" ] }
+        Mongoid.clients[client_name] = { database: database_id_alt, hosts: SpecConfig.instance.addresses }
       end
 
       after do

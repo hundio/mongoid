@@ -7,6 +7,18 @@ gem 'activemodel', '~> 5.1'
 
 
 group :test do
+  gem 'rspec-retry'
   gem 'benchmark-ips'
   gem 'rspec', '~> 3.7'
+  platforms :mri do
+    gem 'timeout-interrupt'
+  end
+  gem 'fuubar'
+end
+
+group :development, :testing do
+  gem 'yard'
+  platforms :mri do
+    gem 'byebug'
+  end
 end

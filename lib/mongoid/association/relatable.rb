@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'mongoid/association/constrainable'
 require 'mongoid/association/options'
 
@@ -57,6 +59,10 @@ module Mongoid
         @name = name
         @options = opts
         @extension = nil
+
+        @module_path = _class.name ? _class.name.split('::')[0..-2].join('::') : ''
+        @module_path << '::' unless @module_path.empty?
+
         create_extension!(&block)
         validate!
       end
@@ -147,7 +153,7 @@ module Mongoid
       #
       # @since 7.0
       def relation_class_name
-        @class_name ||= @options[:class_name] || ActiveSupport::Inflector.classify(name)
+        @class_name ||= @options[:class_name] || ActiveSupport::Inflector.classify(name_with_module)
       end
       alias :class_name :relation_class_name
 
@@ -321,13 +327,23 @@ module Mongoid
 
       private
 
+      def name_with_module
+        @module_path + name.to_s.capitalize
+      end
+
+      # Gets the model classes with inverse associations of this model. This is used to determine
+      # the classes on the other end of polymorphic relations with models.
+      def inverse_association_classes
+        Mongoid::Config.models.map { |m| inverse_association(m) }.compact.map(&:inverse_class)
+      end
+
       def setup_index!
         @owner_class.index(index_spec, background: true) if indexed?
       end
 
       def define_touchable!
         if touchable?
-          Association::Touchable.define_touchable!(self)
+          Touchable.define_touchable!(self)
         end
       end
 

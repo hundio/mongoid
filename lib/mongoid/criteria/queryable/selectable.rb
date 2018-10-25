@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 # encoding: utf-8
 module Mongoid
   class Criteria
@@ -24,7 +25,7 @@ module Mongoid
         # @since 2.0.0
         POLYGON = "Polygon"
 
-        # @attribute [rw] negating If the next spression is negated.
+        # @attribute [rw] negating If the next expression is negated.
         # @attribute [rw] selector The query selector.
         attr_accessor :negating, :selector
 

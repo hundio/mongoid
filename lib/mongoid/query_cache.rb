@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 # encoding: utf-8
 module Mongoid
 
@@ -163,7 +164,8 @@ module Mongoid
         @cursor_id = result.cursor_id
         @coll_name ||= result.namespace.sub("#{database.name}.", '') if result.namespace
         documents = result.documents
-        (@cached_documents ||= []).concat(documents)
+        (@cached_documents ||= []).concat(documents) if @cursor_id.zero? && !@after_first_batch
+        @after_first_batch = true
         documents
       end
     end

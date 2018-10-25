@@ -1,24 +1,20 @@
-$LOAD_PATH.unshift(File.dirname(__FILE__))
-$LOAD_PATH.unshift(File.join(File.dirname(__FILE__), "..", "lib"))
+# frozen_string_literal: true
+
+require 'lite_spec_helper'
 
 MODELS = File.join(File.dirname(__FILE__), "app/models")
 $LOAD_PATH.unshift(MODELS)
 
 require "action_controller"
-require "mongoid"
-require "rspec"
+require 'rspec/retry'
 
-# These environment variables can be set if wanting to test against a database
-# that is not on the local machine.
-ENV["MONGOID_SPEC_HOST"] ||= "127.0.0.1"
-ENV["MONGOID_SPEC_PORT"] ||= "27017"
-
-# These are used when creating any connection in the test suite.
-HOST = ENV["MONGOID_SPEC_HOST"]
-PORT = ENV["MONGOID_SPEC_PORT"].to_i
-
-Mongo::Logger.logger.level = Logger::INFO
-# Mongoid.logger.level = Logger::DEBUG
+if SpecConfig.instance.client_debug?
+  Mongoid.logger.level = Logger::DEBUG
+  Mongo::Logger.logger.level = Logger::DEBUG
+else
+  Mongoid.logger.level = Logger::INFO
+  Mongo::Logger.logger.level = Logger::INFO
+end
 
 # When testing locally we use the database named mongoid_test. However when
 # tests are running in parallel on Travis we need to use different database
@@ -34,11 +30,12 @@ end
 
 require 'support/authorization'
 require 'support/expectations'
+require 'support/constraints'
 
 # Give MongoDB time to start up on the travis ci environment.
 if (ENV['CI'] == 'travis' || ENV['CI'] == 'evergreen')
   starting = true
-  client = Mongo::Client.new(['127.0.0.1:27017'])
+  client = Mongo::Client.new(SpecConfig.instance.addresses)
   while starting
     begin
       client.command(Mongo::Server::Monitor::Connection::ISMASTER)
@@ -54,9 +51,14 @@ CONFIG = {
   clients: {
     default: {
       database: database_id,
-      hosts: [ "#{HOST}:#{PORT}" ],
+      hosts: SpecConfig.instance.addresses,
       options: {
-        server_selection_timeout: 0.5,
+        server_selection_timeout:
+          if SpecConfig.instance.jruby?
+            3
+          else
+            0.5
+          end,
         wait_queue_timeout: 5,
         max_pool_size: 5,
         heartbeat_frequency: 180,
@@ -67,7 +69,12 @@ CONFIG = {
     }
   },
   options: {
-    belongs_to_required_by_default: false
+    belongs_to_required_by_default: false,
+    log_level: if SpecConfig.instance.client_debug?
+      :debug
+    else
+      :info
+    end,
   }
 }
 
@@ -88,6 +95,20 @@ def array_filters_supported?
   Mongoid::Clients.default.cluster.next_primary.features.array_filters_enabled?
 end
 alias :sessions_supported? :array_filters_supported?
+
+def testing_geo_near?
+  $geo_near_enabled ||= (Mongoid::Clients.default
+                             .command(serverStatus: 1)
+                             .first['version'] < '4.1')
+end
+
+def transactions_supported?
+  Mongoid::Clients.default.cluster.next_primary.features.transactions_enabled?
+end
+
+def testing_transactions?
+  transactions_supported? && testing_replica_set?
+end
 
 def testing_locally?
   !(ENV['CI'] == 'travis')
@@ -130,9 +151,10 @@ I18n.config.enforce_available_locales = false
 RSpec.configure do |config|
   config.raise_errors_for_deprecations!
   config.include(Mongoid::Expectations)
+  config.extend(Constraints)
 
   config.before(:suite) do
-    client = Mongo::Client.new(["#{HOST}:#{PORT}"])
+    client = Mongo::Client.new(SpecConfig.instance.addresses)
     begin
       # Create the root user administrator as the first user to be added to the
       # database. This user will need to be authenticated in order to add any
@@ -148,10 +170,6 @@ RSpec.configure do |config|
     Mongoid.default_client.collections.each do |coll|
       coll.delete_many
     end
-  end
-
-  config.after(:suite) do
-    Mongoid.purge!
   end
 end
 

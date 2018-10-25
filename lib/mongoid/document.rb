@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 # encoding: utf-8
 require "mongoid/positional"
 require "mongoid/evolvable"
@@ -15,6 +16,7 @@ require "mongoid/fields"
 require "mongoid/timestamps"
 require "mongoid/association"
 require "mongoid/composable"
+require "mongoid/touchable"
 
 module Mongoid
 
@@ -23,6 +25,7 @@ module Mongoid
   module Document
     extend ActiveSupport::Concern
     include Composable
+    include Mongoid::Touchable::InstanceMethods
 
     attr_accessor :__selected_fields
     attr_reader :new_record
@@ -177,6 +180,13 @@ module Mongoid
     end
 
     # Calls #as_json on the document with additional, Mongoid-specific options.
+    #
+    # @note Rails 6 changes return value of as_json for non-primitive types
+    #   such as BSON::ObjectId. In Rails <= 5, as_json returned these as
+    #   instances of the class. In Rails 6, these are returned serialized to
+    #   primitive types (e.g. {"$oid"=>"5bcfc40bde340b37feda98e9"}).
+    #   See https://github.com/rails/rails/commit/2e5cb980a448e7f4ab00df6e9ad4c1cc456616aa
+    #   for more information.
     #
     # @example Get the document as json.
     #   document.as_json(compact: true)
