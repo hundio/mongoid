@@ -50,13 +50,19 @@ module Mongoid
     #     document.set(name: "Tool").inc(likes: 10)
     #   end
     #
+    # @example Execute the operations atomically, only if the given selector matches document.
+    #   document.atomically requiring: { "name" => { "$exists" => false } } do
+    #     document.set(name: "Tool").inc(likes: 10)
+    #   end
+    #
     # @return [ true, false ] If the operation succeeded.
     #
     # @since 4.0.0
-    def atomically
+    def atomically(requiring: nil)
       begin
         call_depth = @atomically_depth ||= 0
         @atomic_updates_to_execute = @atomic_updates_to_execute || {}
+        @atomic_update_selector_extension = (requiring || {}).merge(@atomic_update_selector_extension || {})
 
         if block_given?
           @atomically_depth += 1
@@ -64,12 +70,18 @@ module Mongoid
           @atomically_depth -= 1
         end
 
-        persist_atomic_operations(@atomic_updates_to_execute) if call_depth.zero?
-        true
+        result = persist_atomic_operations(@atomic_updates_to_execute, @atomic_update_selector_extension) if call_depth.zero?
+
+        if result.nil? || requiring.nil? || requiring.empty?
+          true
+        else
+          result.n > 0
+        end
       ensure
         if call_depth.zero?
           @atomically_depth = nil
           @atomic_updates_to_execute = nil
+          @atomic_update_selector_extension = nil
         end
       end
     end
@@ -216,10 +228,10 @@ module Mongoid
     # @param [ Hash ] operations The atomic operations.
     #
     # @since 4.0.0
-    def persist_atomic_operations(operations)
+    def persist_atomic_operations(operations, selector_extension = {})
       if persisted? && operations
         selector = atomic_selector
-        _root.collection.find(selector).update_one(positionally(selector, operations))
+        _root.collection.find(selector.merge(selector_extension)).update_one(positionally(selector, operations))
       end
     end
   end
