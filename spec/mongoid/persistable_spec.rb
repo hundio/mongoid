@@ -268,6 +268,70 @@ describe Mongoid::Persistable do
           end
         end
       end
+
+      context "when given an extension to the atomic selector" do
+
+        context "when nesting atomically calls with join_context: true" do
+          before do
+            class Band
+              def my_verified_updates(selector)
+                atomically join_context: true, requiring: selector do |d|
+                  d.set(name: "Placebo")
+                  d.unset(:origin)
+                end
+              end
+            end
+          end
+
+          context "when the extension matches the document" do
+            let!(:update) do
+              document.atomically requiring: { "origin" => "London" } do |doc|
+                doc.inc(member_count: 10)
+                doc.bit(likes: { and: 13 })
+                doc.my_verified_updates "name" => { "$exists" => false }
+              end
+            end
+
+            it_behaves_like "an atomically updatable root document"
+          end
+
+          context "when the extension does not match the document" do
+            it "returns false" do
+              result = document.atomically requiring: { "origin" => "London" } do |doc|
+                doc.inc(member_count: 10)
+                doc.bit(likes: { and: 13 })
+                doc.my_verified_updates "name" => "Tool"
+              end
+
+              expect(result).to be false
+            end
+          end
+        end
+
+        context "when the extension matches the document" do
+          let!(:update) do
+            document.atomically requiring: { "origin" => "London" } do
+              document.inc(member_count: 10)
+              document.bit(likes: { and: 13 })
+              document.set(name: "Placebo")
+              document.unset(:origin)
+            end
+          end
+
+          it_behaves_like "an atomically updatable root document"
+        end
+
+        context "when the extension does not match the document" do
+
+          it "returns false" do
+            result = document.atomically requiring: { "origin" => "Rome" } do |doc|
+              doc.set(name: "Placebo")
+            end
+
+            expect(result).to be false
+          end
+        end
+      end
     end
 
     context "when providing no block "do

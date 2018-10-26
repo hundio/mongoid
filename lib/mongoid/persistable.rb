@@ -83,6 +83,11 @@ module Mongoid
     #     document.set name: "Tool"
     #   end
     #
+    # @example Execute the operations atomically, only if the given selector matches document.
+    #   document.atomically requiring: { "name" => { "$exists" => false } } do
+    #     document.set(name: "Tool").inc(likes: 10)
+    #   end
+    #
     # @param [ true, false ] join_context Join the context (i.e. merge
     #   declared atomic operations) of the atomically block wrapping this one
     #   for the same document, if one exists.
@@ -90,10 +95,11 @@ module Mongoid
     # @return [ true, false ] If the operation succeeded.
     #
     # @since 4.0.0
-    def atomically(join_context: nil)
+    def atomically(join_context: nil, requiring: nil)
       join_context = Mongoid.join_contexts if join_context.nil?
       call_depth = @atomic_depth ||= 0
       has_own_context = call_depth.zero? || !join_context
+      @atomic_update_selector_extension = (requiring || {}).merge(@atomic_update_selector_extension || {})
       @atomic_updates_to_execute_stack ||= []
       _mongoid_push_atomic_context if has_own_context
 
@@ -104,11 +110,15 @@ module Mongoid
       end
 
       if has_own_context
-        persist_atomic_operations @atomic_context
+        result = persist_atomic_operations @atomic_context, @atomic_update_selector_extension
         _mongoid_remove_atomic_context_changes
       end
 
-      true
+      if result.nil? || requiring.nil? || requiring.empty?
+        true
+      else
+        result.n > 0
+      end
     rescue Exception => e
       _mongoid_reset_atomic_context_changes! if has_own_context
       raise e
@@ -118,6 +128,7 @@ module Mongoid
       if call_depth.zero?
         @atomic_depth = nil
         @atomic_updates_to_execute_stack = nil
+        @atomic_update_selector_extension = nil
       end
     end
 
@@ -317,10 +328,10 @@ module Mongoid
     # @param [ Hash ] operations The atomic operations.
     #
     # @since 4.0.0
-    def persist_atomic_operations(operations)
+    def persist_atomic_operations(operations, selector_extension = {})
       if persisted? && operations && !operations.empty?
         selector = atomic_selector
-        _root.collection.find(selector).update_one(positionally(selector, operations), session: _session)
+        _root.collection.find(selector.merge(selector_extension)).update_one(positionally(selector, operations), session: _session)
       end
     end
   end
