@@ -24,6 +24,16 @@ module Mongoid
     option :duplicate_fields_exception, default: false
     option :use_activesupport_time_zone, default: true
     option :use_utc, default: false
+    option :atomically_join_context_default, default: false
+
+    # The log level.
+    #
+    # It must be set prior to referencing clients or Mongo.logger,
+    # changes to this option are not be propagated to any clients and
+    # loggers that already exist.
+    #
+    # Additionally, only when the clients are configured via the
+    # configuration file is the log level given by this option honored.
     option :log_level, default: :info
 
     # Has Mongoid been configured? This is checking that at least a valid
