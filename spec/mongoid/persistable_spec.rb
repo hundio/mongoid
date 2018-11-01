@@ -270,8 +270,8 @@ describe Mongoid::Persistable do
         context "when nesting atomically calls" do
           before do
             class Band
-              def my_verified_updates(selector)
-                atomically requiring: selector do |d|
+              def my_verified_updates(join_context, selector)
+                atomically requiring: selector, join_context: join_context do |d|
                   d.set(name: "Placebo")
                   d.unset(:origin)
                 end
@@ -279,27 +279,141 @@ describe Mongoid::Persistable do
             end
           end
 
-          context "when the extension matches the document" do
-            let!(:update) do
-              document.atomically requiring: { "origin" => "London" } do |doc|
-                doc.inc(member_count: 10)
-                doc.bit(likes: { and: 13 })
-                doc.my_verified_updates "name" => { "$exists" => false }
+          context "when given join_context: false" do
+            context "when the extension matches the document" do
+              let!(:update) do
+                document.atomically requiring: { "likes" => 60 } do |doc|
+                  doc.inc(member_count: 10)
+                  doc.bit(likes: { and: 13 })
+                  doc.my_verified_updates false, "name" => { "$exists" => false }
+                end
+              end
+
+              it_behaves_like "an atomically updatable root document"
+            end
+
+            context "when the inner extension does not match the document" do
+
+              let(:run_update) do
+                document.atomically requiring: { "likes" => 60 } do |doc|
+                  doc.inc(member_count: 10)
+                  doc.bit(likes: { and: 13 })
+                  doc.my_verified_updates false, "name" => "Tool"
+                end
+              end
+
+              it "returns true" do
+                result = run_update
+
+                expect(result).to be true
+              end
+
+              it "persists verified changes" do
+                run_update
+
+                document.reload
+
+                expect(document.member_count).to eq 10
+                expect(document.likes).to eq 12
+                expect(document.origin).to eq "London"
+                expect(document.name).to be nil
+              end
+
+              it "resets in-memory changes that did not successfully persist" do
+                run_update
+
+                expect(document.member_count).to eq 10
+                expect(document.likes).to eq 12
+                expect(document.origin).to eq "London"
+                expect(document.name).to be nil
               end
             end
 
-            it_behaves_like "an atomically updatable root document"
-          end
+            context "when the outer extension does not match the document" do
 
-          context "when the extension does not match the document" do
-            it "returns false" do
-              result = document.atomically requiring: { "origin" => "London" } do |doc|
-                doc.inc(member_count: 10)
-                doc.bit(likes: { and: 13 })
-                doc.my_verified_updates "name" => "Tool"
+              let(:run_update) do
+                document.atomically requiring: { "origin" => "Berlin" } do |doc|
+                  doc.inc(member_count: 10)
+                  doc.bit(likes: { and: 13 })
+                  doc.my_verified_updates false, "name" => { "$exists" => false }
+                end
               end
 
-              expect(result).to be false
+              it "returns false" do
+                result = run_update
+
+                expect(result).to be false
+              end
+
+              it "persists verified changes" do
+                run_update
+
+                document.reload
+
+                expect(document.member_count).to eq 0
+                expect(document.likes).to eq 60
+                expect(document.origin).to be nil
+                expect(document.name).to eq "Placebo"
+              end
+
+              it "resets in-memory changes that did not successfully persist" do
+                run_update
+
+                expect(document.member_count).to eq 0
+                expect(document.likes).to eq 60
+                expect(document.origin).to be nil
+                expect(document.name).to eq "Placebo"
+              end
+            end
+          end
+
+          context "when given join_context: true" do
+            context "when the extension matches the document" do
+              let!(:update) do
+                document.atomically requiring: { "origin" => "London" } do |doc|
+                  doc.inc(member_count: 10)
+                  doc.bit(likes: { and: 13 })
+                  doc.my_verified_updates true, "name" => { "$exists" => false }
+                end
+              end
+
+              it_behaves_like "an atomically updatable root document"
+            end
+
+            context "when the extension does not match the document" do
+              let(:run_update) do
+                document.atomically requiring: { "origin" => "London" } do |doc|
+                  doc.inc(member_count: 10)
+                  doc.bit(likes: { and: 13 })
+                  doc.my_verified_updates true, "name" => "Tool"
+                end
+              end
+
+              it "returns false" do
+                result = run_update
+
+                expect(result).to be false
+              end
+
+              it "does not persist changes" do
+                run_update
+
+                document.reload
+
+                expect(document.member_count).to eq 0
+                expect(document.likes).to eq 60
+                expect(document.origin).to eq "London"
+                expect(document.name).to be nil
+              end
+
+              it "resets in-memory changes that did not successfully persist" do
+                run_update
+
+                expect(document.member_count).to eq 0
+                expect(document.likes).to eq 60
+                expect(document.origin).to eq "London"
+                expect(document.name).to be nil
+              end
             end
           end
         end
@@ -319,12 +433,30 @@ describe Mongoid::Persistable do
 
         context "when the extension does not match the document" do
 
-          it "returns false" do
-            result = document.atomically requiring: { "origin" => "Rome" } do |doc|
+          let(:run_update) do
+            document.atomically requiring: { "origin" => "Rome" } do |doc|
               doc.set(name: "Placebo")
             end
+          end
+
+          it "returns false" do
+            result = run_update
 
             expect(result).to be false
+          end
+
+          it "does not persist changes" do
+            run_update
+
+            document.reload
+
+            expect(document.name).to be nil
+          end
+
+          it "resets in-memory changes that did not successfully persist" do
+            run_update
+
+            expect(document.name).to be nil
           end
         end
       end

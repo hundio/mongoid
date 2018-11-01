@@ -101,6 +101,7 @@ module Mongoid
       @atomic_updates_to_execute_stack ||= []
       push_atomically_context if has_own_context
       @atomic_update_selector_extension.replace (requiring || {}).merge(@atomic_update_selector_extension)
+      given_atomic_selector = !@atomic_update_selector_extension.empty?
 
       if block_given?
         @atomically_depth += 1
@@ -110,13 +111,14 @@ module Mongoid
 
       if has_own_context
         result = persist_atomic_operations @atomically_context, @atomic_update_selector_extension
-        remove_atomically_context_changes
+        result = result.n > 0
+        result || !given_atomic_selector ? remove_atomically_context_changes : reset_atomically_context_changes!
       end
 
-      if result.nil? || @atomic_update_selector_extension.nil? || @atomic_update_selector_extension.empty?
+      if result.nil? || !given_atomic_selector
         true
       else
-        result.n > 0
+        result
       end
     rescue StandardError => e
       reset_atomically_context_changes! if has_own_context
