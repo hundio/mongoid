@@ -170,6 +170,10 @@ describe Mongoid::Persistable::Pushable do
           expect(person.test_array).to eq([ 1 ])
         end
 
+        it "pushes at a given position" do
+          expect(person.test_array_2).to eq([ 1, 5, 6, 2 ])
+        end
+
         it "returns self object" do
           expect(push).to eq(person)
         end
@@ -190,19 +194,24 @@ describe Mongoid::Persistable::Pushable do
           expect(person.reload.test_array).to eq([ 1 ])
         end
 
+        it "persists pushes at a given position" do
+          expect(person.reload.test_array_2).to eq([ 1, 5, 6, 2 ])
+        end
+
         it "flattens only 1 level" do
           expect(person.reload.arrays).to eq([[ 7, 8 ]])
         end
       end
 
       let(:person) do
-        Person.create(aliases: [ 1, 2, 3 ], array: [ 4, 5, 6 ])
+        Person.create(aliases: [ 1, 2, 3 ], array: [ 4, 5, 6 ], test_array_2: [ 1, 2 ])
       end
 
       context "when provided string fields" do
 
         let!(:push) do
           person.push("aliases" => 4, "array" => [ 7, 8 ], "test_array" => 1, "arrays" => [[ 7, 8 ]])
+          person.push({"test_array_2" => [ 5, 6 ]}, position: 1)
         end
 
         it_behaves_like "a pushable root document"
@@ -212,6 +221,7 @@ describe Mongoid::Persistable::Pushable do
 
         let!(:push) do
           person.push(aliases: 4, array: [ 7, 8 ], test_array: 1, arrays: [[ 7, 8 ]])
+          person.push({test_array_2: [ 5, 6 ]}, position: 1)
         end
 
         it_behaves_like "a pushable root document"
@@ -234,6 +244,10 @@ describe Mongoid::Persistable::Pushable do
           expect(address.test).to eq([ 1 ])
         end
 
+        it "pushes at a given position" do
+          expect(address.latlng).to eq([ 100, 1, 2, -200 ])
+        end
+
         it "returns self object" do
           expect(push).to eq(address)
         end
@@ -253,6 +267,10 @@ describe Mongoid::Persistable::Pushable do
         it "persists absent values" do
           expect(address.reload.test).to eq([ 1 ])
         end
+
+        it "persists pushes at a given position" do
+          expect(address.reload.latlng).to eq([ 100, 1, 2, -200 ])
+        end
       end
 
       let(:person) do
@@ -260,13 +278,14 @@ describe Mongoid::Persistable::Pushable do
       end
 
       let(:address) do
-        person.addresses.create(street: "t", services: [ 1 ], a: [ 4, 5 ])
+        person.addresses.create(street: "t", services: [ 1 ], a: [ 4, 5 ], latlng: [ 100, -200 ])
       end
 
       context "when provided string fields" do
 
         let!(:push) do
           address.push("services" => 4, "a" => [ 6, 7 ], "test" => 1)
+          address.push({"latlng" => [ 1, 2 ]}, position: 1)
         end
 
         it_behaves_like "a pushable embedded document"
@@ -276,6 +295,7 @@ describe Mongoid::Persistable::Pushable do
 
         let!(:push) do
           address.push(services: 4, a: [ 6, 7 ], test: 1)
+          address.push({latlng: [ 1, 2 ]}, position: 1)
         end
 
         it_behaves_like "a pushable embedded document"

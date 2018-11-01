@@ -42,18 +42,26 @@ module Mongoid
       # @example Push multiple values onto arrays.
       #   document.push(names: [ "James", "Bond" ])
       #
+      # @example Push values at a specific index onto arrays.
+      #   document.push({names: ["James", "Bond"]}, position: 0)
+      #
       # @param [ Hash ] pushes The $push operations.
+      # @param [ Hash ] modifiers The modifiers to apply to given operations.
+      #
+      # @option modifiers [ Integer ] :position Apply a $position modifier.
       #
       # @return [ Document ] The document.
       #
       # @since 4.0.0
-      def push(pushes)
+      def push(pushes, position: nil)
+        modifiers = { "$position" => position }.reject { |_,val| val.nil? }
+
         prepare_atomic_operation do |ops|
           process_atomic_operations(pushes) do |field, value|
             existing = send(field) || (attributes[field] ||= [])
             values = [ value ].flatten(1)
-            values.each{ |val| existing.push(val) }
-            ops[atomic_attribute_name(field)] = { "$each" => values }
+            position.nil? ? existing.push(*values) : existing.insert(position, *values)
+            ops[atomic_attribute_name(field)] = { "$each" => values }.merge(modifiers)
           end
           { "$push" => ops }
         end

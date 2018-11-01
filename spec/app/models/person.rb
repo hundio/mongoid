@@ -35,6 +35,7 @@ class Person
   field :a, as: :array, type: Array
   field :desc, localize: true
   field :test_array, type: Array
+  field :test_array_2, type: Array
   field :overridden_setter, type: String
   field :arrays, type: Array
   field :range, type: Range
