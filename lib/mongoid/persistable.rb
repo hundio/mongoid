@@ -99,9 +99,11 @@ module Mongoid
       join_context = Mongoid.join_contexts if join_context.nil?
       call_depth = @atomic_depth ||= 0
       has_own_context = call_depth.zero? || !join_context
-      @atomic_update_selector_extension = (requiring || {}).merge(@atomic_update_selector_extension || {})
       @atomic_updates_to_execute_stack ||= []
       _mongoid_push_atomic_context if has_own_context
+      requiring = @atomic_updates_to_execute_stack[-2][1] if requiring == :parent
+      @atomic_update_selector_extension.replace (requiring || {}).merge(@atomic_update_selector_extension)
+      given_atomic_selector = !@atomic_update_selector_extension.empty?
 
       if block_given?
         @atomic_depth += 1
@@ -111,13 +113,14 @@ module Mongoid
 
       if has_own_context
         result = persist_atomic_operations @atomic_context, @atomic_update_selector_extension
-        _mongoid_remove_atomic_context_changes
+        result = result.n > 0 if result
+        result || !given_atomic_selector ? _mongoid_remove_atomic_context_changes : _mongoid_reset_atomic_context_changes!
       end
 
-      if result.nil? || requiring.nil? || requiring.empty?
+      if result.nil? || !given_atomic_selector
         true
       else
-        result.n > 0
+        result
       end
     rescue Exception => e
       _mongoid_reset_atomic_context_changes! if has_own_context
@@ -128,7 +131,6 @@ module Mongoid
       if call_depth.zero?
         @atomic_depth = nil
         @atomic_updates_to_execute_stack = nil
-        @atomic_update_selector_extension = nil
       end
     end
 
@@ -269,7 +271,8 @@ module Mongoid
     def _mongoid_push_atomic_context
       return unless executing_atomically?
       @atomic_context = {}
-      @atomic_updates_to_execute_stack << @atomic_context
+      @atomic_update_selector_extension = {}
+      @atomic_updates_to_execute_stack << [@atomic_context, @atomic_update_selector_extension]
     end
 
     # Pop an atomic context off the stack.
@@ -281,7 +284,7 @@ module Mongoid
     def _mongoid_pop_atomic_context
       return unless executing_atomically?
       @atomic_updates_to_execute_stack.pop
-      @atomic_context = @atomic_updates_to_execute_stack.last
+      @atomic_context, @atomic_update_selector_extension = @atomic_updates_to_execute_stack.last
     end
 
     # Return the current atomic context's changed fields.

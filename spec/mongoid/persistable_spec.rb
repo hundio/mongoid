@@ -295,6 +295,21 @@ describe Mongoid::Persistable do
             it_behaves_like "an atomically updatable root document"
           end
 
+          context "when given requiring: :parent" do
+
+            it "copies its parent's selector extension" do
+              document.atomically requiring: { "origin" => "Berlin" } do |doc|
+                doc.inc(member_count: 10)
+                doc.atomically join_context: false, requiring: :parent do |doc2|
+                  doc2.unset :origin
+                end
+              end
+
+              expect(document.origin).to eq "London"
+              expect(document.reload.origin).to eq "London"
+            end
+          end
+
           context "when the extension does not match the document" do
             it "returns false" do
               result = document.atomically requiring: { "origin" => "London" } do |doc|
