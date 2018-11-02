@@ -100,6 +100,7 @@ module Mongoid
       has_own_context = call_depth.zero? || !join_context
       @atomic_updates_to_execute_stack ||= []
       push_atomically_context if has_own_context
+      requiring = @atomic_updates_to_execute_stack[-2][1] if requiring == :parent
       @atomic_update_selector_extension.replace (requiring || {}).merge(@atomic_update_selector_extension)
       given_atomic_selector = !@atomic_update_selector_extension.empty?
 

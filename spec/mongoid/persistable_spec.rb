@@ -365,6 +365,21 @@ describe Mongoid::Persistable do
                 expect(document.name).to eq "Placebo"
               end
             end
+
+            context "when given requiring: :parent" do
+
+              it "copies its parent's selector extension" do
+                document.atomically requiring: { "origin" => "Berlin" } do |doc|
+                  doc.inc(member_count: 10)
+                  doc.atomically join_context: false, requiring: :parent do |doc2|
+                    doc2.unset :origin
+                  end
+                end
+
+                expect(document.origin).to eq "London"
+                expect(document.reload.origin).to eq "London"
+              end
+            end
           end
 
           context "when given join_context: true" do
