@@ -2,6 +2,8 @@ require "spec_helper"
 
 describe Mongoid::Persistable do
 
+  class PersistableSpecTestException < StandardError; end
+
   describe "#atomically" do
 
     let(:document) do
@@ -191,7 +193,7 @@ describe Mongoid::Persistable do
                 doc2.inc(member_count: 10)
               end
               doc.inc likes: 1
-              raise "oops"
+              raise PersistableSpecTestException, "oops"
             end
           end
 
@@ -206,7 +208,7 @@ describe Mongoid::Persistable do
           end
 
           it "independently persists the non-joining block's operations" do
-            begin run_update; rescue RuntimeError; end
+            begin run_update; rescue PersistableSpecTestException; end
 
             document.reload
 
@@ -216,7 +218,7 @@ describe Mongoid::Persistable do
           end
 
           it "resets in-memory changes that did not successfully persist" do
-            begin run_update; rescue RuntimeError; end
+            begin run_update; rescue PersistableSpecTestException; end
 
             expect(document.origin).to eq "London"
             expect(document.likes).to eq 60
@@ -253,9 +255,9 @@ describe Mongoid::Persistable do
                 doc.atomically(join_context: true) do |doc3|
                   doc.inc likes: 1
                 end
-                raise "oops"
+                raise PersistableSpecTestException, "oops"
               end
-            rescue RuntimeError
+            rescue PersistableSpecTestException
             end
 
             expect(document.origin).to eq "London"
