@@ -96,7 +96,7 @@ module Mongoid
     #
     # @since 4.0.0
     def atomically(requiring: nil, join_context: nil)
-      join_context ||= Mongoid.join_contexts
+      join_context = Mongoid.join_contexts if join_context.nil?
       call_depth = @atomic_depth ||= 0
       has_own_context = call_depth.zero? || !join_context
       @atomic_updates_to_execute_stack ||= []
