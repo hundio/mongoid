@@ -59,7 +59,7 @@ module Mongoid
     # changes.
     #
     # The default value of join_context is set by the global configuration
-    # option atomically_join_context_default, whose own default is false.
+    # option join_contexts, whose own default is false.
     #
     # @example Execute the operations atomically.
     #   document.atomically do
@@ -95,25 +95,26 @@ module Mongoid
     # @return [ true, false ] If the operation succeeded.
     #
     # @since 4.0.0
-    def atomically(requiring: nil, join_context: Mongoid.atomically_join_context_default)
-      call_depth = @atomically_depth ||= 0
+    def atomically(requiring: nil, join_context: nil)
+      join_context ||= Mongoid.join_contexts
+      call_depth = @atomic_depth ||= 0
       has_own_context = call_depth.zero? || !join_context
       @atomic_updates_to_execute_stack ||= []
-      push_atomically_context if has_own_context
+      push_atomic_context if has_own_context
       requiring = @atomic_updates_to_execute_stack[-2][1] if requiring == :parent
       @atomic_update_selector_extension.replace (requiring || {}).merge(@atomic_update_selector_extension)
       given_atomic_selector = !@atomic_update_selector_extension.empty?
 
       if block_given?
-        @atomically_depth += 1
+        @atomic_depth += 1
         yield(self)
-        @atomically_depth -= 1
+        @atomic_depth -= 1
       end
 
       if has_own_context
-        result = persist_atomic_operations @atomically_context, @atomic_update_selector_extension
+        result = persist_atomic_operations @atomic_context, @atomic_update_selector_extension
         result = result.n > 0
-        result || !given_atomic_selector ? remove_atomically_context_changes : reset_atomically_context_changes!
+        result || !given_atomic_selector ? remove_atomic_context_changes : reset_atomic_context_changes!
       end
 
       if result.nil? || !given_atomic_selector
@@ -121,14 +122,14 @@ module Mongoid
       else
         result
       end
-    rescue StandardError => e
-      reset_atomically_context_changes! if has_own_context
+    rescue Exception => e
+      reset_atomic_context_changes! if has_own_context
       raise e
     ensure
-      pop_atomically_context if has_own_context
+      pop_atomic_context if has_own_context
 
       if call_depth.zero?
-        @atomically_depth = nil
+        @atomic_depth = nil
         @atomic_updates_to_execute_stack = nil
       end
     end
@@ -243,75 +244,75 @@ module Mongoid
       end
     end
 
-    # Remove the dirty changes for all fields changed in the current atomically
+    # Remove the dirty changes for all fields changed in the current atomic
     # context.
     #
     # @api private
     #
-    # @example Remove the current atomically context's dirty changes.
-    #   document.remove_atomically_context_changes
+    # @example Remove the current atomic context's dirty changes.
+    #   document.remove_atomic_context_changes
     #
     # @since VERSION
-    def remove_atomically_context_changes
+    def remove_atomic_context_changes
       return unless executing_atomically?
-      atomically_context_changed_fields.each { |f| remove_change f }
+      atomic_context_changed_fields.each { |f| remove_change f }
     end
 
-    # Reset the attributes for all fields changed in the current atomically
+    # Reset the attributes for all fields changed in the current atomic
     # context.
     #
     # @api private
     #
-    # @example Reset the current atomically context's changed attributes.
-    #   document.reset_atomically_context_changes!
+    # @example Reset the current atomic context's changed attributes.
+    #   document.reset_atomic_context_changes!
     #
     # @since VERSION
-    def reset_atomically_context_changes!
+    def reset_atomic_context_changes!
       return unless executing_atomically?
-      atomically_context_changed_fields.each { |f| reset_attribute! f }
+      atomic_context_changed_fields.each { |f| reset_attribute! f }
     end
 
-    # Push a new atomically context onto the stack.
+    # Push a new atomic context onto the stack.
     #
     # @api private
     #
-    # @example Push a new atomically context onto the stack.
-    #   document.push_atomically_context
+    # @example Push a new atomic context onto the stack.
+    #   document.push_atomic_context
     #
     # @since VERSION
-    def push_atomically_context
+    def push_atomic_context
       return unless executing_atomically?
-      @atomically_context = {}
+      @atomic_context = {}
       @atomic_update_selector_extension = {}
-      @atomic_updates_to_execute_stack << [@atomically_context, @atomic_update_selector_extension]
+      @atomic_updates_to_execute_stack << [@atomic_context, @atomic_update_selector_extension]
     end
 
-    # Pop an atomically context off the stack.
+    # Pop an atomic context off the stack.
     #
     # @api private
     #
-    # @example Pop an atomically context off the stack.
-    #   document.pop_atomically_context
+    # @example Pop an atomic context off the stack.
+    #   document.pop_atomic_context
     #
     # @since VERSION
-    def pop_atomically_context
+    def pop_atomic_context
       return unless executing_atomically?
       @atomic_updates_to_execute_stack.pop
-      @atomically_context, @atomic_update_selector_extension = @atomic_updates_to_execute_stack.last
+      @atomic_context, @atomic_update_selector_extension = @atomic_updates_to_execute_stack.last
     end
 
-    # Return the current atomically context's changed fields.
+    # Return the current atomic context's changed fields.
     #
     # @api private
     #
-    # @example Return the current atomically context's changed fields.
-    #   document.atomically_context_changed_fields
+    # @example Return the current atomic context's changed fields.
+    #   document.atomic_context_changed_fields
     #
     # @return [ Array ] The changed fields.
     #
     # @since VERSION
-    def atomically_context_changed_fields
-      @atomically_context.values.flat_map(&:keys)
+    def atomic_context_changed_fields
+      @atomic_context.values.flat_map(&:keys)
     end
 
     # If we are in an atomically block, add the operations to the delayed group,
@@ -328,8 +329,8 @@ module Mongoid
     def persist_or_delay_atomic_operation(operation)
       if executing_atomically?
         operation.each do |(name, hash)|
-          @atomically_context[name] ||= {}
-          @atomically_context[name].merge!(hash)
+          @atomic_context[name] ||= {}
+          @atomic_context[name].merge!(hash)
         end
       else
         persist_atomic_operations(operation)
