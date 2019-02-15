@@ -130,9 +130,7 @@ module Mongoid
       #
       # @since 3.0.0
       def first
-        doc = documents.first
-        eager_load_one(doc)
-        doc
+        eager_load([documents.first]).first
       end
       alias :one :first
       alias :find_first :first
@@ -142,7 +140,7 @@ module Mongoid
       # @example Create the new context.
       #   Memory.new(criteria)
       #
-      # @param [ Criteria ] The criteria.
+      # @param [ Criteria ] criteria The criteria.
       #
       # @since 3.0.0
       def initialize(criteria)
@@ -165,9 +163,7 @@ module Mongoid
       #
       # @since 3.0.0
       def last
-        doc = documents.last
-        eager_load_one(doc)
-        doc
+        eager_load([documents.last]).first
       end
 
       # Get the length of matching documents in the context.
@@ -377,6 +373,7 @@ module Mongoid
       #
       # @since 3.0.0
       def apply_options
+        raise Errors::InMemoryCollationNotSupported.new if criteria.options[:collation]
         skip(criteria.options[:skip]).limit(criteria.options[:limit])
       end
 

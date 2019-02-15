@@ -57,7 +57,7 @@ CONFIG = {
       hosts: [ "#{HOST}:#{PORT}" ],
       options: {
         server_selection_timeout: 0.5,
-        max_pool_size: 1,
+        max_pool_size: 5,
         heartbeat_frequency: 180,
         user: MONGOID_ROOT_USER.name,
         password: MONGOID_ROOT_USER.password,
@@ -75,10 +75,19 @@ def testing_locally?
   !(ENV['CI'] == 'travis')
 end
 
+def testing_replica_set?
+  Mongoid::Clients.default.cluster.replica_set?
+end
+
 # Set the database that the spec suite connects to.
 Mongoid.configure do |config|
   config.load_configuration(CONFIG)
 end
+
+def collation_supported?
+  Mongoid::Clients.default.cluster.next_primary.features.collation_enabled?
+end
+alias :decimal128_supported? :collation_supported?
 
 # Autoload every model for the test suite that sits in spec/app/models.
 Dir[ File.join(MODELS, "*.rb") ].sort.each do |file|

@@ -44,12 +44,12 @@ module Mongoid
 
       def mongo_client
         tmp = persistence_options
-        if opts = tmp && tmp.dup
+        if (opts = tmp && !tmp.empty? && tmp.dup)
           if opts[:client]
             client = Clients.with_name(opts[:client])
           else
             client = Clients.with_name(self.class.client_name)
-            client.use(self.class.database_name)
+            client = client.use(self.class.database_name)
           end
           client.with(opts.reject{ |k, v| k == :collection || k == :client })
         end
@@ -135,7 +135,7 @@ module Mongoid
         #   Threaded.set_options(Band, { write: { w: 3 }})
         #
         # @param [ Class ] klass The model class.
-        # @param [ Mongo::Client ] client The client with options.
+        # @param [ Mongo::Client ] options The options.
         #
         # @return [ Mongo::Client, nil ] The client or nil if the cluster does not change.
         #
@@ -252,8 +252,9 @@ module Mongoid
         def with(options)
           if block_given?
             set_options(self, options)
-            yield self
+            result = yield self
             unset_options(self)
+            result
           else
             Proxy.new(self, (persistence_options || {}).merge(options))
           end

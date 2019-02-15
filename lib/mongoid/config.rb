@@ -35,6 +35,7 @@ module Mongoid
     # Additionally, only when the clients are configured via the
     # configuration file is the log level given by this option honored.
     option :log_level, default: :info
+    option :app_name, default: nil
 
     # Has Mongoid been configured? This is checking that at least a valid
     # client config exists.

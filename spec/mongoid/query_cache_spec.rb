@@ -75,6 +75,40 @@ describe Mongoid::QueryCache do
         end
       end
 
+      context 'when the first query has a collation', if: collation_supported? do
+
+        before do
+          Band.where(name: 'DEPECHE MODE').collation(locale: 'en_US', strength: 2).to_a
+        end
+
+        context "when the next query has the same collation" do
+
+          it "uses the cache" do
+            expect_no_queries do
+              Band.where(name: 'DEPECHE MODE').collation(locale: 'en_US', strength: 2).to_a
+            end
+          end
+        end
+
+        context "when the next query does not have the same collation" do
+
+          it "queries again" do
+            expect_query(1) do
+              Band.where(name: 'DEPECHE MODE').collation(locale: 'fr', strength: 2).to_a
+            end
+          end
+        end
+
+        context "when the next query does not have a collation" do
+
+          it "queries again" do
+            expect_query(1) do
+              Band.where(name: 'DEPECHE MODE').to_a
+            end
+          end
+        end
+      end
+
       context "when the first query has no limit" do
 
         let(:game) do
@@ -173,6 +207,27 @@ describe Mongoid::QueryCache do
       end
     end
 
+    context "when sorting documents" do
+      before do
+        Band.asc(:id).to_a
+      end
+
+      context "with different selector" do
+
+        it "queries again" do
+          expect_query(1) do
+            Band.desc(:id).to_a
+          end
+        end
+      end
+
+      it "does not query again" do
+        expect_query(0) do
+          Band.asc(:id).to_a
+        end
+      end
+    end
+
     context "when query caching is enabled and the batch_size is set" do
 
       around(:each) do |example|
@@ -246,6 +301,37 @@ describe Mongoid::QueryCache do
     it "queries again" do
       expect_query(1) do
         Band.all.to_a
+      end
+    end
+  end
+
+  context "when reloading a document" do
+
+    let!(:band_id) do
+      Band.create.id
+    end
+
+    context 'when query cache is disabled' do
+
+      before do
+        Mongoid::QueryCache.enabled = false
+      end
+
+      it "queries again" do
+        band = Band.find(band_id)
+        expect_query(1) do
+          band.reload
+        end
+      end
+    end
+
+    context 'when query cache is enabled' do
+
+      it "queries again" do
+        band = Band.find(band_id)
+        expect_query(1) do
+          band.reload
+        end
       end
     end
   end

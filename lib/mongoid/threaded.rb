@@ -64,7 +64,7 @@ module Mongoid
     # @example Set the global database override.
     #   Threaded.database_override = :testing
     #
-    # @param [ String, Symbol ] The global override name.
+    # @param [ String, Symbol ] name The global override name.
     #
     # @return [ String, Symbol ] The override.
     #
@@ -204,7 +204,7 @@ module Mongoid
     # @example Set the global client override.
     #   Threaded.client_override = :testing
     #
-    # @param [ String, Symbol ] The global override name.
+    # @param [ String, Symbol ] name The global override name.
     #
     # @return [ String, Symbol ] The override.
     #
@@ -340,7 +340,7 @@ module Mongoid
     # @example Get all autosaves.
     #   Threaded.autosaves_for(Person)
     #
-    # @param [ Class ] The class to check.
+    # @param [ Class ] klass The class to check.
     #
     # @return [ Array ] The current autosaves.
     #
@@ -353,7 +353,7 @@ module Mongoid
     # @example Get all validations.
     #   Threaded.validations_for(Person)
     #
-    # @param [ Class ] The class to check.
+    # @param [ Class ] klass The class to check.
     #
     # @return [ Array ] The current validations.
     #

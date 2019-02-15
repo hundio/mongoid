@@ -193,6 +193,8 @@ module Mongoid
     # @since 1.0.0
     def initialize(klass)
       @klass = klass
+      @embedded = nil
+      @none = nil
       klass ? super(klass.aliased_fields, klass.fields) : super({}, {})
     end
 
@@ -384,7 +386,7 @@ module Mongoid
     # @example Add a javascript selection.
     #   criteria.where("this.name == 'syd'")
     #
-    # @param [ String, Hash ] criterion The javascript or standard selection.
+    # @param [ String, Hash ] expression The javascript or standard selection.
     #
     # @raise [ UnsupportedJavascript ] If provided a string and the criteria
     #   is embedded.

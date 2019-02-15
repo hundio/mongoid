@@ -80,7 +80,7 @@ module Mongoid
       #     default_scope ->{ where(active: true) }
       #   end
       #
-      # @param [ Proc, Criteria ] scope The default scope.
+      # @param [ Proc, Criteria ] value The default scope.
       #
       # @raise [ Errors::InvalidScope ] If the scope is not a proc or criteria.
       #
@@ -117,7 +117,7 @@ module Mongoid
       # @since 3.0.0
       def queryable
         crit = Threaded.current_scope(self) || Criteria.new(self)
-        crit.embedded = true if crit.klass.embedded?
+        crit.embedded = true if (crit.klass.embedded? && !crit.klass.cyclic?)
         crit
       end
 
@@ -136,7 +136,7 @@ module Mongoid
       #   end
       #
       # @param [ Symbol ] name The name of the scope.
-      # @param [ Proc ] conditions The conditions of the scope.
+      # @param [ Proc ] value The conditions of the scope.
       #
       # @raise [ Errors::InvalidScope ] If the scope is not a proc.
       # @raise [ Errors::ScopeOverwrite ] If the scope name already exists.

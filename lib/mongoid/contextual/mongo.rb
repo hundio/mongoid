@@ -18,7 +18,18 @@ module Mongoid
       # Options constant.
       #
       # @since 5.0.0
-      OPTIONS = [ :hint, :limit, :skip, :sort, :batch_size, :max_scan, :snapshot, :comment, :read ].freeze
+      OPTIONS = [ :hint,
+                  :limit,
+                  :skip,
+                  :sort,
+                  :batch_size,
+                  :max_scan,
+                  :snapshot,
+                  :comment,
+                  :read,
+                  :cursor_type,
+                  :collation
+                ].freeze
 
       # @attribute [r] view The Mongo collection view.
       attr_reader :view
@@ -68,9 +79,7 @@ module Mongoid
       #
       # @since 3.0.0
       def delete
-        self.count.tap do
-          view.delete_many
-        end
+        view.delete_many.deleted_count
       end
       alias :delete_all :delete
 
@@ -83,11 +92,10 @@ module Mongoid
       #
       # @since 3.0.0
       def destroy
-        destroyed = self.count
-        each do |doc|
+        each.inject(0) do |count, doc|
           doc.destroy
+          count += 1
         end
-        destroyed
       end
       alias :destroy_all :destroy
 
@@ -189,7 +197,7 @@ module Mongoid
       # @example Execute the command.
       #   context.find_one_and_update({ likes: 1 })
       #
-      # @param [ Hash ] update The updates.
+      # @param [ Hash ] replacement The replacement.
       # @param [ Hash ] options The command options.
       #
       # @option options [ :before, :after ] :return_document Return the updated document
@@ -237,7 +245,10 @@ module Mongoid
       def first
         return documents.first if cached? && cache_loaded?
         try_cache(:first) do
-          with_eager_loading(view.limit(-1).first)
+          if raw_doc = view.limit(-1).first
+            doc = Factory.from_db(klass, raw_doc, criteria.options[:fields])
+            eager_load([doc]).first
+          end
         end
       end
       alias :one :first
@@ -249,7 +260,10 @@ module Mongoid
       # @since 4.0.2
       def find_first
         return documents.first if cached? && cache_loaded?
-        with_eager_loading(view.first)
+        if raw_doc = view.first
+          doc = Factory.from_db(klass, raw_doc, criteria.options[:fields])
+          eager_load([doc]).first
+        end
       end
 
       # Execute a $geoNear command against the database.
@@ -284,7 +298,7 @@ module Mongoid
       # @example Map by some field.
       #   context.map(:field1)
       #
-      # @exmaple Map with block.
+      # @example Map with block.
       #   context.map(&:field1)
       #
       # @param [ Symbol ] field The field name.
@@ -334,7 +348,10 @@ module Mongoid
       def last
         try_cache(:last) do
           with_inverse_sorting do
-            with_eager_loading(view.limit(-1).first)
+            if raw_doc = view.limit(-1).first
+              doc = Factory.from_db(klass, raw_doc, criteria.options[:fields])
+              eager_load([doc]).first
+            end
           end
         end
       end
@@ -390,7 +407,7 @@ module Mongoid
       # @note This method will return the raw db values - it performs no custom
       #   serialization.
       #
-      # @param [ String, Symbol, Array ] field Fields to pluck.
+      # @param [ String, Symbol, Array ] fields Fields to pluck.
       #
       # @return [ Array<Object, Array> ] The plucked values.
       #
@@ -542,12 +559,6 @@ module Mongoid
         if criteria.options[:timeout] == false
           @view = view.no_cursor_timeout
         end
-        if criteria.options[:cursor_type]
-          # @todo: update to use #cursor_type method on view when driver 2.3 is released.
-          # See RUBY-1080
-          @view = view.clone
-          @view.options.merge!(cursor_type: criteria.options[:cursor_type])
-        end
       end
 
       # Apply an option.
@@ -643,15 +654,10 @@ module Mongoid
       #
       # @since 3.0.0
       def documents_for_iteration
-        if cached? && !documents.empty?
-          documents
-        elsif eager_loadable?
-          docs = view.map{ |doc| Factory.from_db(klass, doc, criteria.options[:fields]) }
-          eager_load(docs)
-          docs
-        else
-          view
-        end
+        return documents if cached? && !documents.empty?
+        return view unless eager_loadable?
+        docs = view.map{ |doc| Factory.from_db(klass, doc, criteria.options[:fields]) }
+        eager_load(docs)
       end
 
       # Yield to the document.
@@ -668,7 +674,7 @@ module Mongoid
       # @since 3.0.0
       def yield_document(document, &block)
         doc = document.respond_to?(:_id) ?
-          document : Factory.from_db(klass, document, criteria.options[:fields])
+            document : Factory.from_db(klass, document, criteria.options[:fields])
         yield(doc)
         documents.push(doc) if cacheable?
       end

@@ -1,0 +1,26 @@
+=============
+Mongoid (5.2)
+=============
+
+.. default-domain:: mongodb
+
+The Mongoid documentation has the following tutorials:
+
+.. toctree::
+   :titlesonly:
+
+   /tutorials/mongoid-installation
+   /tutorials/mongoid-documents
+   /tutorials/mongoid-persistence
+   /tutorials/mongoid-queries
+   /tutorials/mongoid-relations
+   /tutorials/mongoid-nested-attributes
+   /tutorials/mongoid-callbacks
+   /tutorials/mongoid-validation
+   /tutorials/mongoid-indexes
+   /tutorials/mongoid-rails
+   /tutorials/mongoid-upgrade
+   API <https://docs.mongodb.com/mongoid/5.2/api/>
+
+For documentation on Mongoid 3 and 4, see `<http://mongoid.github.io>`_.
+

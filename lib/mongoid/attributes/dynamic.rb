@@ -13,7 +13,8 @@ module Mongoid
       # @example Does this object respond to the method?
       #   person.respond_to?(:title)
       #
-      # @param [ Array ] *args The name of the method.
+      # @param [ Array ] name The name of the method.
+      # @param [ true, false ] include_private
       #
       # @return [ true, false ] True if it does, false if not.
       #
@@ -37,7 +38,7 @@ module Mongoid
       # @since 4.0.0
       def define_dynamic_reader(name)
         return unless name.valid_method_name?
-        class_eval <<-READER
+        class_eval <<-READER, __FILE__, __LINE__ + 1
           def #{name}
             attribute_will_change!(#{name.inspect})
             read_attribute(#{name.inspect})
@@ -56,7 +57,7 @@ module Mongoid
       #
       # @since 4.0.0
       def define_dynamic_before_type_cast_reader(name)
-        class_eval <<-READER
+        class_eval <<-READER, __FILE__, __LINE__ + 1
           def #{name}_before_type_cast
             attribute_will_change!(#{name.inspect})
             read_attribute_before_type_cast(#{name.inspect})
@@ -77,7 +78,7 @@ module Mongoid
       def define_dynamic_writer(name)
         return unless name.valid_method_name?
 
-        class_eval <<-WRITER
+        class_eval <<-WRITER, __FILE__, __LINE__ + 1
           def #{name}=(value)
             write_attribute(#{name.inspect}, value)
           end
@@ -126,7 +127,7 @@ module Mongoid
       #   document.method_missing(:test)
       #
       # @param [ String, Symbol ] name The name of the method.
-      # @param [ Array ] *args The arguments to the method.
+      # @param [ Array ] args The arguments to the method.
       #
       # @return [ Object ] The result of the method call.
       #

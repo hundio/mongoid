@@ -408,12 +408,24 @@ describe Mongoid::Clients do
       it "returns the default client" do
         expect(mongo_client.options[:database].to_s).to eq(database_id)
       end
+
+      it "sets the platform to Mongoid's platform constant" do
+        expect(mongo_client.options[:platform]).to eq(Mongoid::PLATFORM_DETAILS)
+      end
+
+      it "sets the app_name to the config value" do
+        expect(mongo_client.options[:app_name]).to eq('testing')
+      end
     end
 
     context "when no client exists with the key" do
 
       before(:all) do
         Band.store_in(client: :nonexistent)
+      end
+
+      after do
+        Band.reset_storage_options!
       end
 
       let(:band) do
@@ -424,6 +436,63 @@ describe Mongoid::Clients do
         expect {
           band.mongo_client
         }.to raise_error(Mongoid::Errors::NoClientConfig)
+      end
+    end
+
+    context "when getting a client by name", if: testing_locally? do
+
+      let(:file) do
+        File.join(File.dirname(__FILE__), "..", "config", "mongoid.yml")
+      end
+
+      before do
+        described_class.clear
+        Mongoid.load!(file, :test)
+        Band.store_in(client: :reports)
+      end
+
+      after do
+        mongo_client.close
+        Mongoid::Config.reset
+        Band.reset_storage_options!
+      end
+
+      let!(:band) do
+        Band.store_in(client: :reports)
+      end
+
+      let!(:mongo_client) do
+        Band.new.mongo_client
+      end
+
+      it "uses the reports client" do
+        expect(mongo_client.options[:database].to_s).to eq('reports')
+      end
+
+      it "sets the platform to Mongoid's platform constant" do
+        expect(mongo_client.options[:platform]).to eq(Mongoid::PLATFORM_DETAILS)
+      end
+
+      it "sets the app_name to the config value" do
+        expect(mongo_client.options[:app_name]).to eq('testing')
+      end
+    end
+
+    context 'when the app_name is not set in the config' do
+
+      before do
+        Mongoid::Config.reset
+        Mongoid.configure do |config|
+          config.load_configuration(CONFIG)
+        end
+      end
+
+      let(:mongo_client) do
+        Band.new.mongo_client
+      end
+
+      it 'does not set the Mongoid.app_name option' do
+        expect(mongo_client.options.has_key?(:app_name)).to be(false)
       end
     end
   end
@@ -457,12 +526,20 @@ describe Mongoid::Clients do
         Mongoid.clients[:default][:database] = database_id
       end
 
-      let!(:mongo_client) do
+      let(:mongo_client) do
         Band.mongo_client
       end
 
       it "returns the default client" do
         expect(mongo_client.options[:database].to_s).to eq(database_id)
+      end
+
+      it "sets the platform to Mongoid's platform constant" do
+        expect(mongo_client.options[:platform]).to eq(Mongoid::PLATFORM_DETAILS)
+      end
+
+      it "sets the app_name to the config value" do
+        expect(mongo_client.options[:app_name]).to eq('testing')
       end
     end
 
@@ -731,27 +808,42 @@ describe Mongoid::Clients do
 
     context "when the override is global" do
 
-      before do
-        Mongoid.override_database(:mongoid_optional)
-      end
+      shared_examples_for "a global database override" do
 
-      after do
-        Band.delete_all
-        Mongoid.override_database(nil)
-      end
+        before do
+          Mongoid.override_database(:mongoid_optional)
+        end
 
-      let!(:band) do
-        Band.create(name: "Tool")
-      end
+        after do
+          Band.delete_all
+          Mongoid.override_database(nil)
+        end
 
-      it "persists to the overridden database" do
-        Band.mongo_client.with(database: :mongoid_optional) do |sess|
-          expect(sess[:bands].find(name: "Tool")).to_not be_nil
+        let!(:band) do
+          klass.create(name: "Tool")
+        end
+
+        it "persists to the overridden database" do
+          mongo_client = Band.mongo_client.with(database: :mongoid_optional)
+          expect(mongo_client[:bands].count(name: "Tool")).to eq(1)
+        end
+
+        it 'uses that database for the model mongo_client' do
+          expect(Band.mongo_client.database.name).to eq('mongoid_optional')
         end
       end
 
-      it 'uses that database for the model mongo_client' do
-        expect(Band.mongo_client.database.name).to eq('mongoid_optional')
+      context "when normal usage" do
+        let(:klass) { Band }
+
+        it_behaves_like "a global database override"
+      end
+
+      context "when overriding the persistence options" do
+
+        let(:klass) { Band.with(connect_timeout: 10) }
+
+        it_behaves_like "a global database override"
       end
     end
   end

@@ -12,6 +12,7 @@ require "mongoid/matchable/ne"
 require "mongoid/matchable/nin"
 require "mongoid/matchable/or"
 require "mongoid/matchable/size"
+require "mongoid/matchable/regexp"
 
 module Mongoid
 
@@ -81,7 +82,7 @@ module Mongoid
     #
     # @param [ Document ] document The document to check.
     # @param [ Symbol, String ] key The field name.
-    # @param [ Object, Hash ] The value or selector.
+    # @param [ Object, Hash ] value The value or selector.
     #
     # @return [ Matcher ] The matcher.
     #
@@ -102,7 +103,7 @@ module Mongoid
       #
       # @param [ Document ] document The document to check.
       # @param [ Symbol, String ] key The field name.
-      # @param [ Object, Hash ] The value or selector.
+      # @param [ Object, Hash ] value The value or selector.
       #
       # @return [ Matcher ] The matcher.
       #
@@ -115,6 +116,8 @@ module Mongoid
           else
             Default.new(extract_attribute(document, key))
           end
+        elsif value.regexp?
+          Regexp.new(extract_attribute(document, key))
         else
           case key.to_s
             when "$or" then Or.new(value, document)
@@ -143,7 +146,11 @@ module Mongoid
         if (key_string = key.to_s) =~ /.+\..+/
           key_string.split('.').inject(document.as_document) do |_attribs, _key|
             if _attribs.is_a?(::Array)
-              _attribs.map { |doc| doc.try(:[], _key) }
+              if _key =~ /\A\d+\z/ && _attribs.none? {|doc| doc.is_a?(Hash)}
+                _attribs.try(:[], _key.to_i)
+              else
+                _attribs.map { |doc| doc.try(:[], _key) }
+              end
             else
               _attribs.try(:[], _key)
             end
