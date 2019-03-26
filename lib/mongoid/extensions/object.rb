@@ -31,12 +31,18 @@ module Mongoid
 
       # Mongoize a plain object into a time.
       #
+      # @note This method should not be used, because it does not
+      #   return correct results for non-Time objects. Override
+      #   __mongoize_time__ in classes that are time-like to return an
+      #   instance of Time or ActiveSupport::TimeWithZone.
+      #
       # @example Mongoize the object.
       #   object.__mongoize_time__
       #
       # @return [ Object ] self.
       #
       # @since 3.0.0
+      # @deprecated
       def __mongoize_time__
         self
       end
@@ -77,7 +83,7 @@ module Mongoid
         self
       end
 
-      # Check if the object is part of a blank relation criteria.
+      # Check if the object is part of a blank association criteria.
       #
       # @example Is the object blank criteria?
       #   "".blank_criteria?

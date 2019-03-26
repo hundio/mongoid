@@ -44,17 +44,22 @@ module Mongoid
 
       # Converts the array for storing as a time.
       #
+      # @note Returns a local time in the default time zone.
+      #
       # @example Convert the array to a time.
       #   [ 2010, 1, 1 ].__mongoize_time__
+      #   # => 2010-01-01 00:00:00 -0500
       #
-      # @return [ Time ] The time.
+      # @return [ Time | ActiveSupport::TimeWithZone ] Local time in the
+      #   configured default time zone corresponding to date/time components
+      #   in this array.
       #
       # @since 3.0.0
       def __mongoize_time__
         ::Time.configured.local(*self)
       end
 
-      # Check if the array is part of a blank relation criteria.
+      # Check if the array is part of a blank association criteria.
       #
       # @example Is the array blank criteria?
       #   [].blank_criteria?

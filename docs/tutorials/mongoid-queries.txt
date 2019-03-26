@@ -113,6 +113,90 @@ as the following example shows:
 
   root.child_tags.elem_match(child_tags: {name: 'subsub1'}).to_a # => [sub1]
 
+only
+````
+
+This method retrieves only the specified fields from the database.
+
+.. code-block:: ruby
+
+  class Band
+    include Mongoid::Document
+    
+    field :name, type: String
+    field :label, type: String
+    
+    embeds_many :tours
+  end
+
+  class Tour
+    include Mongoid::Document
+    
+    field :city, type: String
+    field :year, type: Integer
+    
+    embedded_in :band
+  end
+
+  band = Band.only(:name).first
+
+Attempting to reference attributes which have not been loaded results in
+``ActiveModel::MissingAttributeError``.
+
+.. code-block:: ruby
+
+  band.label
+  # ActiveModel::MissingAttributeError (Missing attribute: 'label'.)
+
+Even though Mongoid currently allows writing to attributes that have not
+been loaded, such writes will not be persisted
+(`MONGOID-4701 <https://jira.mongodb.org/browse/MONGOID-4701>`_) and
+should therefore be avoided.
+
+``only`` can also be used with embedded associations:
+
+.. code-block:: ruby
+
+  band = Band.only(:name, 'tours.year').last
+  # => #<Band _id: 5c59afb1026d7c034dba46ac, name: "Aerosmith">
+
+  band.tours.first
+  # => #<Tour _id: 5c59afdf026d7c034dba46af, city: nil, year: 1995>
+
+``only`` can be specified with referenced associations (has_one, has_many,
+has_and_belongs_to_many) but is currently ignored for referenced associations -
+all fields of referenced associations will be loaded
+(`MONGOID-4704 <https://jira.mongodb.org/browse/MONGOID-4704>`_).
+
+Note that if a document has ``has_one`` or ``has_and_belongs_to_many`` associations,
+the fields with foreign keys must be included in the list of attributes
+loaded with ``only`` for those associations to be loaded. For example:
+
+.. code-block:: ruby
+
+  class Band
+    include Mongoid::Document
+    
+    field :name, type: String
+    
+    has_and_belongs_to_many :managers
+  end
+
+  class Manager
+    include Mongoid::Document
+    
+    has_and_belongs_to_many :bands
+  end
+  
+  band = Band.create!(name: 'Astral Projection')
+  band.managers << Manager.new
+  
+  Band.where(name: 'Astral Projection').only(:name).first.managers
+  # => []
+  
+  Band.where(name: 'Astral Projection').only(:name, :manager_ids).first.managers
+  # => [#<Manager _id: 5c5dc2f0026d7c1730969843, band_ids: [BSON::ObjectId('5c5dc2f0026d7c1730969842')]>]
+
 
 Query Cache
 ***********
@@ -222,13 +306,25 @@ Mongoid also has some helpful methods on criteria.
 
        *Find a document by the provided attributes, and if not found
        create and return a newly persisted one. Note that attributes provided in the arguments to
-       this method will override any set in ``create_with``*
+       this method will override any set in ``create_with``*.
 
      -
         .. code-block:: ruby
 
           Band.find_or_create_by(name: "Photek")
           Band.where(:likes.gt => 10).find_or_create_by(name: "Photek")
+       
+        ``find_or_create_by`` can be used on any scope, but in this case
+        the criteria given by the scope and by ``find_or_create_by`` are
+        combined. The following creates three bands:
+        
+        .. code-block:: ruby
+
+          Band.find_or_create_by(name: "Photek")
+          Band.where(name: "Photek").find_or_create_by(name: "Aerosmith")
+          # creates Aerosmith again because there is no band whose name
+          # is Photek and Aerosmith at the same time
+          Band.where(name: "Photek").find_or_create_by(name: "Aerosmith")
 
    * - ``Criteria#find_or_initialize_by``
 
@@ -319,9 +415,9 @@ Eager Loading
 *************
 
 Mongoid provides a facility to eager load documents
-from relations to prevent the n+1 issue when
-iterating over documents with relation access. Eager loaded is supported on
-all relations with the exception of polymorphic ``belongs_to``
+from associations to prevent the n+1 issue when
+iterating over documents with association access. Eager loading is supported on
+all associations with the exception of polymorphic ``belongs_to``
 associations.
 
 .. code-block:: ruby
@@ -578,8 +674,42 @@ Default Scopes
 **************
 
 Default scopes can be useful when you find yourself applying the same
-criteria to most queries, and want something to be there by default.
-Default scopes take procs that return criteria objects.
+criteria to most queries, and wish to specify these criteria as the default.
+Default scopes are procs that return criteria objects.
+
+.. code-block:: ruby
+
+  class Band
+    include Mongoid::Document
+    field :name, type: String
+    field :active, type: Boolean
+
+    default_scope ->{ where(active: true) }
+  end
+
+  Band.each do |band|
+    # All bands here are active.
+  end
+
+Specifying a default scope also initializes the fields of new models to
+the values given in the default scope, if the values are simple literals:
+
+.. code-block:: ruby
+
+  class Band
+    include Mongoid::Document
+    field :name, type: String
+    field :active, type: Boolean
+    field :num_tours, type: Integer
+
+    default_scope ->{ where(active: true, num_tours: {'$gt' => 1}) }
+  end
+
+  # active is set, num_tours is not set
+  Band.new # => #<Band _id: 5c3f7452ce4ef378295ca5f5, name: nil, active: true, num_tours: nil>
+
+Note that if a default value is provided both in the field definition and
+in the default scope, the value in the default scope takes precedence:
 
 .. code-block:: ruby
 
@@ -588,12 +718,42 @@ Default scopes take procs that return criteria objects.
     field :name, type: String
     field :active, type: Boolean, default: true
 
-    default_scope ->{ where(active: true) }
+    default_scope ->{ where(active: false) }
   end
+  
+  Band.new # => #<Band _id: 5c3f74ddce4ef3791abbb088, name: nil, active: false>
 
-  Band.each do |band|
-    # All bands here are active.
+Because a default scope initializes fields in new models as just described,
+defining a default scope with a dotted key and a simple literal value is
+not possible:
+
+.. code-block:: ruby
+
+  class Band
+    include Mongoid::Document
+    field :name, type: String
+    field :tags, type: Hash
+
+    default_scope ->{ where('tags.foo' => 'bar') }
   end
+  
+  Band.create! # exception: BSON::String::IllegalKey ('tags.foo' is an illegal key in MongoDB. Keys may not start with '$' or contain a '.'.)
+
+A workaround is to define the default scope as a complex query:
+
+.. code-block:: ruby
+
+  class Band
+    include Mongoid::Document
+    field :name, type: String
+    field :tags, type: Hash
+
+    default_scope ->{ where('tags.foo' => {'$eq' => 'bar'}) }
+  end
+  
+  Band.create!(tags: {hello: 'world'})
+  Band.create!(tags: {foo: 'bar'})
+  Band.count # => 1
 
 You can tell Mongoid not to apply the default scope by using
 ``unscoped``, which can be inline or take a block.
@@ -612,10 +772,10 @@ again later to always ensure it's there.
 
   Band.unscoped.where(name: "Depeche Mode").scoped
 
-If you are using a default scope on a model that is part of a relation,
-you must reload the relation to have scoping reapplied.
-This is important to note if you change a value of a document in the relation
-that would affect its visibility within the scoped relation.
+If you are using a default scope on a model that is part of an association,
+you must reload the association to have scoping reapplied.
+This is important to note if you change a value of a document in the association
+that would affect its visibility within the scoped association.
 
 .. code-block:: ruby
 

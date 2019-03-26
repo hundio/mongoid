@@ -3482,7 +3482,7 @@ describe Mongoid::Criteria do
       context "when querying on a big decimal" do
 
         let(:sales) do
-          BigDecimal.new('0.1')
+          BigDecimal('0.1')
         end
 
         let!(:band) do
@@ -3530,6 +3530,38 @@ describe Mongoid::Criteria do
         it 'properly converts the object to an ObjectId' do
           expect(selector['ratable_id']).to eq(movie.id)
         end
+      end
+    end
+
+    context 'when given multiple keys in separate calls' do
+      let(:criteria) { Band.where(foo: 1).where(bar: 2) }
+
+      it 'combines criteria' do
+        expect(criteria.selector).to eq('foo' => 1, 'bar' => 2)
+      end
+    end
+
+    context 'when given same key in separate calls' do
+      let(:criteria) { Band.where(foo: 1).where(foo: 2) }
+
+      it 'combines criteria' do
+        expect(criteria.selector).to eq('$and' => [{'foo' => 1}], 'foo' => 2)
+      end
+    end
+
+    context 'when given same key in separate calls and there are other criteria' do
+      let(:criteria) { Band.where(foo: 1, bar: 3).where(foo: 2) }
+
+      it 'combines criteria' do
+        expect(criteria.selector).to eq('$and' => [{'foo' => 1, 'bar' => 3}], 'foo' => 2)
+      end
+    end
+
+    context 'when given same key in separate calls and other criteria are added later' do
+      let(:criteria) { Band.where(foo: 1).where(foo: 2).where(bar: 3) }
+
+      it 'adds other criteria to top level' do
+        expect(criteria.selector).to eq('$and' => [{'foo' => 1}], 'foo' => 2, 'bar' => 3)
       end
     end
   end

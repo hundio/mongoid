@@ -28,7 +28,7 @@ if test -z "$JAVACMD" && [ -f /usr/lib/jvm/java-1.8.0/bin/java ]; then
   export PATH=$PATH:/usr/lib/jvm/java-1.8.0/bin
 fi
 
-if [ "$RVM_RUBY" == "ruby-head" ]; then
+if test "$RVM_RUBY" = "ruby-head"; then
   # 12.04, 14.04 and 16.04 are good
   wget -O ruby-head.tar.bz2 http://rubies.travis-ci.org/ubuntu/`lsb_release -rs`/x86_64/ruby-head.tar.bz2
   tar xf ruby-head.tar.bz2
@@ -38,10 +38,10 @@ if [ "$RVM_RUBY" == "ruby-head" ]; then
   
   #rvm reinstall $RVM_RUBY
 else
-  if test "$RVM_RUBY" = ruby-2.2; then
+  if true; then
   
   # For testing toolchains:
-  toolchain_url=https://s3.amazonaws.com//mciuploads/mongo-ruby-toolchain/ubuntu1404/8cd47ac2cf636710740a6d79167f055e4c0a0154/mongo_ruby_driver_toolchain_ubuntu1404_8cd47ac2cf636710740a6d79167f055e4c0a0154_18_08_24_03_45_11.tar.gz
+  toolchain_url=https://s3.amazonaws.com//mciuploads/mongo-ruby-toolchain/ubuntu1404/8cd47ac2cf636710740a6d79167f055e4c0a0154/mongo_ruby_driver_toolchain_ubuntu1404_patch_8cd47ac2cf636710740a6d79167f055e4c0a0154_5c452b76e3c3312273591db4_19_01_21_02_16_23.tar.gz
   curl -fL $toolchain_url |tar zxf -
   export PATH=`pwd`/rubies/$RVM_RUBY/bin:$PATH
   
@@ -80,17 +80,29 @@ EOH
   # Only install bundler when not using ruby-head.
   # ruby-head comes with bundler and gem complains
   # because installing bundler would overwrite the bundler binary
-  gem install bundler
+  gem install bundler -v '<2'
 fi
 
 echo "We are in `pwd`"
 
-if [ $DRIVER == "master" ]; then
+if test "$DRIVER" = "master"; then
   bundle install --gemfile=gemfiles/driver_master.gemfile
   BUNDLE_GEMFILE=gemfiles/driver_master.gemfile bundle exec rake spec
-elif [ $RAILS == "master" ]; then
+elif test "$DRIVER" = "stable"; then
+  bundle install --gemfile=gemfiles/driver_stable.gemfile
+  BUNDLE_GEMFILE=gemfiles/driver_stable.gemfile bundle exec rake spec
+elif test "$DRIVER" = "stable-jruby"; then
+  bundle install --gemfile=gemfiles/driver_stable_jruby.gemfile
+  BUNDLE_GEMFILE=gemfiles/driver_stable_jruby.gemfile bundle exec rake spec
+elif test "$RAILS" = "master"; then
   bundle install --gemfile=gemfiles/rails_master.gemfile
   BUNDLE_GEMFILE=gemfiles/rails_master.gemfile bundle exec rake spec
+elif test "$RAILS" = "master"; then
+  bundle install --gemfile=gemfiles/rails_master_jruby.gemfile
+  BUNDLE_GEMFILE=gemfiles/rails_master_jruby.gemfile bundle exec rake spec
+elif test "$I18N" = "1.0"; then
+  bundle install --gemfile=gemfiles/i18n-1.0.gemfile
+  BUNDLE_GEMFILE=gemfiles/i18n-1.0.gemfile bundle exec rake spec
 else
   bundle install
   bundle exec rake spec

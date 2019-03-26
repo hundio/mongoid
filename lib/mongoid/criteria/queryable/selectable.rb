@@ -135,13 +135,21 @@ module Mongoid
           ::Boolean.evolve(value)
         end
 
-        # Add a $geoIntersects or $geoWithin selection. Symbol operators must be used as shown in
-        # the examples to expand the criteria.
+        # Add a $geoIntersects or $geoWithin selection. Symbol operators must
+        # be used as shown in the examples to expand the criteria.
         #
         # @note The only valid geometry shapes for a $geoIntersects are:
         #   :intersects_line, :intersects_point, and :intersects_polygon.
         #
-        # @note The only valid geometry shape for a $geoWithin is :within_polygon
+        # @note The only valid options for a $geoWithin query are the geometry
+        #   shape :within_polygon and the operator :within_box.
+        #
+        # @note The :within_box operator for the $geoWithin query expects the
+        #   lower left (south west) coordinate pair as the first argument and
+        #   the upper right (north east) as the second argument.
+        #   Important: When latitude and longitude are passed, longitude is
+        #   expected as the first element of the coordinate pair.
+        #   Source: https://docs.mongodb.com/manual/reference/operator/query/box/
         #
         # @example Add a geo intersect criterion for a line.
         #   query.geo_spacial(:location.intersects_line => [[ 1, 10 ], [ 2, 10 ]])
@@ -154,6 +162,9 @@ module Mongoid
         #
         # @example Add a geo within criterion for a polygon.
         #   query.geo_spacial(:location.within_polygon => [[ 1, 10 ], [ 2, 10 ], [ 1, 10 ]])
+        #
+        # @example Add a geo within criterion for a box.
+        #   query.geo_spacial(:location.within_box => [[ 1, 10 ], [ 2, 10 ])
         #
         # @param [ Hash ] criterion The criterion.
         #
@@ -175,6 +186,7 @@ module Mongoid
         key :within_polygon, :override, "$geoWithin", "$geometry" do |value|
           { "type" => POLYGON, "coordinates" => value }
         end
+        key :within_box, :override, "$geoWithin", "$box"
 
         # Add the $gt criterion to the selector.
         #
@@ -502,6 +514,11 @@ module Mongoid
         # @example Construct a text search selector with options.
         #   selectable.text_search("testing", :$language => "fr")
         #
+        # @note Per https://docs.mongodb.com/manual/reference/operator/query/text/
+        #   it is not currently possible to supply multiple text search
+        #   conditions in a query. Mongoid will build such a query but the
+        #   server will return an error when trying to execute it.
+        #
         # @param [ String, Symbol ] terms A string of terms that MongoDB parses
         #   and uses to query the text index.
         # @param [ Hash ] opts Text search options. See MongoDB documentation
@@ -513,9 +530,19 @@ module Mongoid
         def text_search(terms, opts = nil)
           clone.tap do |query|
             if terms
-              criterion = { :$text => { :$search => terms } }
-              criterion[:$text].merge!(opts) if opts
-              query.selector = criterion
+              criterion = {'$text' => { '$search' => terms }}
+              criterion['$text'].merge!(opts) if opts
+              if query.selector['$text']
+                # Per https://docs.mongodb.com/manual/reference/operator/query/text/
+                # multiple $text expressions are not currently supported by
+                # MongoDB server, but build the query correctly instead of
+                # overwriting previous text search condition with the currently
+                # given one.
+                Mongoid.logger.warn('Multiple $text expressions per query are not currently supported by the server')
+                query.selector = {'$and' => [query.selector]}.merge(criterion)
+              else
+                query.selector = query.selector.merge(criterion)
+              end
             end
           end
         end
@@ -558,7 +585,19 @@ module Mongoid
         # @since 1.0.0
         def expr_query(criterion)
           selection(criterion) do |selector, field, value|
-            selector.merge!(field.__expr_part__(value.__expand_complex__, negating?))
+            kv = field.__expr_part__(value.__expand_complex__, negating?)
+            if selector[field]
+              # We already have a restriction by the field we are trying
+              # to restrict, combine the restrictions
+              selector.replace('$and' => [Hash[selector.to_a]])
+            end
+            # This merge does additional processing on kv, kv isn't written
+            # into the selector as it is.
+            # This is also why we $and only the previous value of the selector,
+            # because we need to pass the new value through serialization logic
+            # otherwise document instances get stored as document instances
+            # and not their ids.
+            selector.merge!(kv)
           end
         end
 

@@ -1,7 +1,8 @@
 # frozen_string_literal: true
-
 # -*- coding: utf-8 -*-
 require "spec_helper"
+
+require_relative './copyable_spec_models'
 
 describe Mongoid::Copyable do
 
@@ -92,13 +93,45 @@ describe Mongoid::Copyable do
 
         context "and dynamic attributes are not set" do
 
-          it "clones" do
-            t = StoreAsDupTest1.new(:name => "hi")
-            t.build_store_as_dup_test2(:name => "there")
-            t.save
-            copy = t.send(method)
-            expect(copy.store_as_dup_test2.name).to eq(t.store_as_dup_test2.name)
+          context 'embeds_one' do
+
+            it "clones" do
+              t = StoreAsDupTest1.new(:name => "hi")
+              t.build_store_as_dup_test2(:name => "there")
+              t.save
+              copy = t.send(method)
+              expect(copy.object_id).not_to eq(t.object_id)
+              expect(copy.store_as_dup_test2.name).to eq(t.store_as_dup_test2.name)
+            end
           end
+
+          context 'embeds_many' do
+
+
+            it "clones" do
+              t = StoreAsDupTest3.new(:name => "hi")
+              t.store_as_dup_test4s << StoreAsDupTest4.new
+              t.save
+              copy = t.send(method)
+              expect(copy.object_id).not_to eq(t.object_id)
+              expect(copy.store_as_dup_test4s).not_to be_empty
+              expect(copy.store_as_dup_test4s.first.object_id).not_to eq(t.store_as_dup_test4s.first.object_id)
+            end
+          end
+        end
+      end
+
+      context 'nested embeds_many' do
+        it 'works' do
+          a = CopyableSpec::A.new
+          a.locations << CopyableSpec::Location.new
+          a.locations.first.buildings << CopyableSpec::Building.new
+          a.save!
+
+          new_a = a.send(method)
+
+          expect(new_a.locations.length).to be 1
+          expect(new_a.locations.first.buildings.length).to be 1
         end
       end
 

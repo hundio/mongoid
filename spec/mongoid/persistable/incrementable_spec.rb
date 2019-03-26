@@ -68,15 +68,15 @@ describe Mongoid::Persistable::Incrementable do
       context "when providing big decimal values" do
 
         let(:five) do
-          BigDecimal.new("5.0")
+          BigDecimal("5.0")
         end
 
         let(:neg_ten) do
-          BigDecimal.new("-10.0")
+          BigDecimal("-10.0")
         end
 
         let(:thirty) do
-          BigDecimal.new("30.0")
+          BigDecimal("30.0")
         end
 
         let!(:inc) do
@@ -153,15 +153,15 @@ describe Mongoid::Persistable::Incrementable do
       context "when providing big decimal values" do
 
         let(:five) do
-          BigDecimal.new("5.0")
+          BigDecimal("5.0")
         end
 
         let(:neg_ten) do
-          BigDecimal.new("-10.0")
+          BigDecimal("-10.0")
         end
 
         let(:thirty) do
-          BigDecimal.new("30.0")
+          BigDecimal("30.0")
         end
 
         let!(:inc) do
@@ -221,6 +221,20 @@ describe Mongoid::Persistable::Incrementable do
         end
 
         it_behaves_like "an incrementable embedded document in another embedded document"
+      end
+    end
+
+    context "when executing atomically" do
+
+      let(:person) do
+        Person.create(age: 10, score: 100)
+      end
+
+      it "marks a dirty change for the incremented fields" do
+        person.atomically do
+          person.inc age: 15, score: 2
+          expect(person.changes).to eq({"age" => [10, 25], "score" => [100, 102]})
+        end
       end
     end
   end

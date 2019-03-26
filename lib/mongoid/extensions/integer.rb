@@ -4,16 +4,16 @@ module Mongoid
   module Extensions
     module Integer
 
-      # Returns the integer as a time.
+      # Converts the integer into a time as the number of seconds since the epoch.
       #
       # @example Convert the integer to a time.
       #   1335532685.__mongoize_time__
       #
-      # @return [ Time ] The converted time.
+      # @return [ Time | ActiveSupport::TimeWithZone ] The time.
       #
       # @since 3.0.0
       def __mongoize_time__
-        ::Time.at(self)
+        ::Time.configured.at(self)
       end
 
       # Is the integer a number?
