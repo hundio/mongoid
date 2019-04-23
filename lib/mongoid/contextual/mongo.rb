@@ -69,7 +69,7 @@ module Mongoid
       # @since 3.0.0
       def count(options = {}, &block)
         return super(&block) if block_given?
-        try_cache(:count) { view.count(options) }
+        try_cache(:count) { view.count_documents(options) }
       end
 
       # Delete all documents in the database that match the selector.
