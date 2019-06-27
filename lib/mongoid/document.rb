@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 # encoding: utf-8
+
 require "mongoid/positional"
 require "mongoid/evolvable"
 require "mongoid/extensions"
@@ -200,11 +201,11 @@ module Mongoid
     #
     # @since 5.1.0
     def as_json(options = nil)
-      if options && (options[:compact] == true)
-        super(options).reject! { |k,v| v.nil? }
-      else
-        super(options)
+      rv = super
+      if options && options[:compact]
+        rv = rv.compact
       end
+      rv
     end
 
     # Returns an instance of the specified class with the attributes,

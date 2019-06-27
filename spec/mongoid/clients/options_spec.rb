@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# encoding: utf-8
 
 require "spec_helper"
 
@@ -74,7 +75,7 @@ describe Mongoid::Clients::Options, retry: 3 do
         end
       end
 
-      context 'when passing a block', if: testing_locally? do
+      context 'when passing a block' do
 
         let!(:connections_before) do
           Minim.mongo_client.database.command(serverStatus: 1).first['connections']['current']
@@ -364,7 +365,7 @@ describe Mongoid::Clients::Options, retry: 3 do
         end
       end
 
-      context 'when passing a block', if: testing_locally? do
+      context 'when passing a block' do
 
         let!(:connections_before) do
           test_model.mongo_client.database.command(serverStatus: 1).first['connections']['current']

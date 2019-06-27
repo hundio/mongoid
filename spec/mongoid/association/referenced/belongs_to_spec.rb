@@ -1,6 +1,8 @@
 # frozen_string_literal: true
+# encoding: utf-8
 
 require "spec_helper"
+require_relative './has_one_models'
 
 describe Mongoid::Association::Referenced::BelongsTo do
 
@@ -1623,36 +1625,75 @@ describe Mongoid::Association::Referenced::BelongsTo do
       end
     end
 
+    context 'when the :class_name option is scoped with ::' do
+
+      let(:options) do
+        { class_name: '::OtherOwnerObject' }
+      end
+
+      it 'returns the class name option' do
+        expect(association.relation_class_name).to eq('::OtherOwnerObject')
+      end
+    end
+
     context 'when the class_name option is not specified' do
 
       it 'uses the name of the relation to deduce the class name' do
         expect(association.relation_class_name).to eq('OwnerObject')
       end
     end
+
+    context 'when the association is polymorphic' do
+      let(:association) do
+        HomPolymorphicChild.relations['p_parent']
+      end
+
+      it 'is the computed class name that does not match any existing class' do
+        expect(association.relation_class_name).to eq('PParent')
+      end
+    end
   end
 
-  describe '#klass' do
+  describe '#relation_class' do
 
     context 'when the :class_name option is specified' do
-
-      let!(:_class) do
-        class OtherOwnerObject; end
-        OtherOwnerObject
-      end
 
       let(:options) do
         { class_name: 'OtherOwnerObject' }
       end
 
-      it 'returns the class name option' do
-        expect(association.klass).to eq(_class)
+      it 'returns the named class' do
+        expect(association.relation_class).to eq(OtherOwnerObject)
+      end
+    end
+
+    context 'when the :class_name option is scoped with ::' do
+
+      let(:options) do
+        { class_name: '::OtherOwnerObject' }
+      end
+
+      it 'returns the named class' do
+        expect(association.relation_class).to eq(OtherOwnerObject)
       end
     end
 
     context 'when the class_name option is not specified' do
 
       it 'uses the name of the relation to deduce the class name' do
-        expect(association.klass).to eq(OwnerObject)
+        expect(association.relation_class).to eq(OwnerObject)
+      end
+    end
+
+    context 'when the association is polymorphic' do
+      let(:association) do
+        HomPolymorphicChild.relations['p_parent']
+      end
+
+      it 'raises NameError' do
+        expect do
+          association.relation_class
+        end.to raise_error(NameError, /uninitialized constant .*PParent/)
       end
     end
   end
@@ -1662,12 +1703,32 @@ describe Mongoid::Association::Referenced::BelongsTo do
     it 'returns the name of the owner class' do
       expect(association.inverse_class_name).to eq(belonging_class.name)
     end
+
+    context 'polymorphic association' do
+      let(:association) do
+        belonging_class.belongs_to :poly_owner, polymorphic: true
+      end
+
+      it 'returns the name of the owner class' do
+        expect(association.inverse_class_name).to eq(belonging_class.name)
+      end
+    end
   end
 
   describe '#inverse_class' do
 
     it 'returns the owner class' do
       expect(association.inverse_class).to be(belonging_class)
+    end
+
+    context 'polymorphic association' do
+      let(:association) do
+        belonging_class.belongs_to :poly_owner, polymorphic: true
+      end
+
+      it 'returns the owner class' do
+        expect(association.inverse_class).to be(belonging_class)
+      end
     end
   end
 

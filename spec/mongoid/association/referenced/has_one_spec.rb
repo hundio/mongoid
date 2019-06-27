@@ -1,6 +1,8 @@
 # frozen_string_literal: true
+# encoding: utf-8
 
 require "spec_helper"
+require_relative './has_one_models'
 
 describe Mongoid::Association::Referenced::HasOne do
 
@@ -910,12 +912,12 @@ describe Mongoid::Association::Referenced::HasOne do
         end
       end
 
-      it 'returns the proper namespaced class name' do
+      it 'returns the inferred unqualified class name' do
         define_classes
 
         expect(
             HasOneAssociationClassName::OwnedClass.relations['owner_class'].relation_class_name
-        ).to eq('HasOneAssociationClassName::OwnerClass')
+        ).to eq('OwnerClass')
       end
     end
 
@@ -928,6 +930,16 @@ describe Mongoid::Association::Referenced::HasOne do
       it 'returns the class name option' do
         expect(association.relation_class_name).to eq('OtherBelongingObject')
       end
+
+      context 'when the class is namespaced' do
+        let(:association) do
+          HomNs::PrefixedParent.relations['child']
+        end
+
+        it 'returns unqualified class name as given in the :class_name option' do
+          expect(association.relation_class_name).to eq('PrefixedChild')
+        end
+      end
     end
 
     context 'when the class_name option is not specified' do
@@ -936,9 +948,19 @@ describe Mongoid::Association::Referenced::HasOne do
         expect(association.relation_class_name).to eq('BelongingObject')
       end
     end
+
+    context "when the class is not defined" do
+      let(:name) do
+        :undefined_class
+      end
+
+      it 'does not trigger autoloading' do
+        expect(association.relation_class_name).to eq('UndefinedClass')
+      end
+    end
   end
 
-  describe '#klass' do
+  describe '#relation_class' do
 
     context 'when the :class_name option is specified' do
 
@@ -952,22 +974,48 @@ describe Mongoid::Association::Referenced::HasOne do
       end
 
       it 'returns the class name option' do
-        expect(association.klass).to eq(_class)
+        expect(association.relation_class).to eq(_class)
+      end
+
+      context 'when the class is namespaced' do
+        let(:association) do
+          HomNs::PrefixedParent.relations['child']
+        end
+
+        it 'returns resolved class instance' do
+          expect(association.relation_class).to eq(HomNs::PrefixedChild)
+        end
       end
     end
 
     context 'when the class_name option is not specified' do
 
       it 'uses the name of the relation to deduce the class name' do
-        expect(association.klass).to eq(BelongingObject)
+        expect(association.relation_class).to eq(BelongingObject)
       end
+    end
+  end
+
+  describe '#klass' do
+    it 'is the target class' do
+      expect(association.klass).to eq(BelongingObject)
     end
   end
 
   describe '#inverse_class_name' do
 
     it 'returns the name of the owner class' do
-      expect(association.inverse_class_name).to eq(OwnerObject.name)
+      expect(association.inverse_class_name).to eq('OwnerObject')
+    end
+
+    context 'polymorphic association' do
+      let(:association) do
+        has_one_class.has_one :belonging_object, as: :bar
+      end
+
+      it 'returns the name of the owner class' do
+        expect(association.inverse_class_name).to eq(OwnerObject.name)
+      end
     end
   end
 
@@ -975,6 +1023,16 @@ describe Mongoid::Association::Referenced::HasOne do
 
     it 'returns the owner class' do
       expect(association.inverse_class).to be(OwnerObject)
+    end
+
+    context 'polymorphic association' do
+      let(:association) do
+        has_one_class.has_one :belonging_object, as: :bar
+      end
+
+      it 'returns the owner class' do
+        expect(association.inverse_class).to be(OwnerObject)
+      end
     end
   end
 
