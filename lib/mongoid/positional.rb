@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 # encoding: utf-8
+
 module Mongoid
 
   # This module is responsible for taking update selectors and switching out
@@ -65,7 +66,7 @@ module Mongoid
       matches = position.scan(/\.\d+\./)
       if matches.size == 1
         keys.each do |kk|
-          if position =~ /^#{kk}\.\d+\.(.*)/
+          if position =~ /\A#{kk}\.\d+\.(.*)\z/
             return "#{kk}.$.#{$1}"
           end
         end

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 # encoding: utf-8
+
 require "mongoid/atomic/paths/embedded/one"
 require "mongoid/atomic/paths/embedded/many"
 
@@ -21,7 +22,7 @@ module Mongoid
         #
         # @since 2.1.0
         def path
-          @path ||= position.sub(/\.\d+$/, "")
+          @path ||= position.sub(/\.\d+\z/, "")
         end
       end
     end

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 # encoding: utf-8
+
 module Mongoid
   module Association
     module Referenced
@@ -65,7 +66,10 @@ module Mongoid
           #
           # @since 4.0.0
           def each_loaded_document
-            criteria = @association.klass.any_in(key => keys_from_docs)
+            doc_keys = keys_from_docs
+            return @association.klass.none if doc_keys.all?(&:nil?)
+
+            criteria = @association.klass.any_in(key => doc_keys)
             criteria.inclusions = criteria.inclusions - [@association]
             criteria.each do |doc|
               yield doc

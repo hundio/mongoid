@@ -1,3 +1,6 @@
+# frozen_string_literal: true
+# encoding: utf-8
+
 class HmmCompany
   include Mongoid::Document
 
@@ -28,4 +31,10 @@ class HmmStudent
 
   field :name, type: String
   field :grade, type: Integer, default: 3
+end
+
+class HmmTicket
+  include Mongoid::Document
+
+  belongs_to :person
 end

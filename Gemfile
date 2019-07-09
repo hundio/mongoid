@@ -20,6 +20,8 @@ group :test do
   gem 'rspec-retry'
   gem 'benchmark-ips'
   gem 'rspec', '~> 3.7'
+  gem 'rspec-expectations', '~> 3.7', '<= 3.8.2'
+  #gem 'rspec-expectations', git: 'https://github.com/p-mongo/rspec-expectations', ref: 'pr-1112-3.8'
   gem 'fuubar'
   gem 'rfc'
   platforms :mri do
@@ -30,6 +32,10 @@ end
 group :development, :testing do
   gem 'yard'
   platforms :mri do
-    gem 'byebug'
+    if RUBY_VERSION < '2.3'
+      gem 'byebug', '~> 10.0'
+    else
+      gem 'byebug'
+    end
   end
 end

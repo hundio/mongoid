@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# encoding: utf-8
 
 require "spec_helper"
 
@@ -453,6 +454,64 @@ describe Mongoid::Document do
 
         it "applies the Mongoid-specific options" do
           expect(person.as_json(options).keys).not_to include("ssn")
+        end
+      end
+    end
+
+    context ':compact option' do
+      # Since rails 6 differs in how it treats id fields,
+      # run this test on one version of rails. Currently rails 6 is in beta,
+      # when it is released this version should be changed to 6.
+      max_rails_version '5.2'
+
+      before do
+        # These tests require a specific set of defined attributes
+        # on the model
+        expect(church.as_json.keys.sort).to eq(%w(_id location name))
+      end
+
+      context 'there is a nil valued attribute' do
+        let(:church) do
+          Church.create!(name: 'St. Basil')
+        end
+
+        it 'returns non-nil fields and _id only' do
+          actual = church.as_json(compact: true)
+          expect(actual).to eq('_id' => church.id, 'name' => 'St. Basil')
+        end
+      end
+
+      context 'all attrbutes are nil valued' do
+        let(:church) do
+          Church.create!
+        end
+
+        it 'returns a hash with _id only' do
+          actual = church.as_json(compact: true)
+          expect(actual).to eq('_id' => church.id)
+        end
+      end
+
+      context 'there are no nil valued attributes' do
+        let(:church) do
+          Church.create!(name: 'St. Basil', location: {})
+        end
+
+        it 'returns all fields and _id' do
+          actual = church.as_json(compact: true)
+          expect(actual).to eq('_id' => church.id, 'name' => 'St. Basil',
+            'location' => {})
+        end
+      end
+
+      context 'when option is specified as a truthy value' do
+        let(:church) do
+          Church.create!(name: 'St. Basil')
+        end
+
+        it 'returns non-nil fields and _id only' do
+          actual = church.as_json(compact: 1)
+          expect(actual).to eq('_id' => church.id, 'name' => 'St. Basil')
         end
       end
     end

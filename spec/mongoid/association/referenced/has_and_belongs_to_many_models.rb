@@ -1,3 +1,6 @@
+# frozen_string_literal: true
+# encoding: utf-8
+
 class HabtmmCompany
   include Mongoid::Document
 
@@ -34,4 +37,14 @@ class HabtmmSignature
 
   field :name, type: String
   field :year, type: Integer
+end
+
+class HabtmmTicket
+  include Mongoid::Document
+end
+
+class HabtmmPerson
+  include Mongoid::Document
+
+  has_and_belongs_to_many :tickets, class_name: 'HabtmmTicket'
 end
