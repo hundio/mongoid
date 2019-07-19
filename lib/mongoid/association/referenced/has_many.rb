@@ -226,7 +226,8 @@ module Mongoid
         def determine_inverses(other)
           matches = (other || relation_class).relations.values.select do |rel|
             relation_complements.include?(rel.class) &&
-                rel.relation_class_name == inverse_class_name
+                !rel.polymorphic? &&
+                rel.relation_class == inverse_class
 
           end
           if matches.size > 1
