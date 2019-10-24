@@ -41,7 +41,11 @@ describe Mongoid::Clients::Factory do
           end
 
           it "sets the cluster's seeds" do
-            expect(cluster.addresses.first.to_s).to eq(SpecConfig.instance.addresses.first)
+            address = SpecConfig.instance.addresses.first
+            unless address.include?(':')
+              address = "#{address}:27017"
+            end
+            expect(cluster.addresses.first.to_s).to eq(address)
           end
 
           it "sets the platform to Mongoid's platform constant" do
@@ -135,8 +139,8 @@ describe Mongoid::Clients::Factory do
 
             let(:config) do
               {
-                default: { hosts: [ "127.0.0.1:1234" ], database: database_id },
-                secondary: { uri: "mongodb://127.0.0.1:1234,127.0.0.1:5678/mongoid_test" }
+                default: { hosts: [ "127.0.0.1:1234" ], database: database_id, server_selection_timeout: 1 },
+                secondary: { uri: "mongodb://127.0.0.1:1234,127.0.0.1:5678/mongoid_test?serverSelectionTimeoutMS=1000" }
               }
             end
 
@@ -213,6 +217,9 @@ describe Mongoid::Clients::Factory do
 
       it "sets the cluster's addresses" do
         SpecConfig.instance.addresses.each do |address|
+          unless address.include?(':')
+            address = "#{address}:27017"
+          end
           expect(cluster_addresses).to include(address)
         end
       end
@@ -264,6 +271,9 @@ describe Mongoid::Clients::Factory do
 
     it "sets the cluster's addresses" do
       SpecConfig.instance.addresses.each do |address|
+        unless address.include?(':')
+          address = "#{address}:27017"
+        end
         expect(cluster_addresses).to include(address)
       end
     end
@@ -310,6 +320,9 @@ describe Mongoid::Clients::Factory do
 
     it "sets the cluster's addresses" do
       SpecConfig.instance.addresses.each do |address|
+        unless address.include?(':')
+          address = "#{address}:27017"
+        end
         expect(cluster_addresses).to include(address)
       end
     end

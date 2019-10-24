@@ -55,10 +55,13 @@ module Mongoid
         def store(key, value)
           name, serializer = storage_pair(key)
           if multi_selection?(name)
-            super(name, evolve_multi(value))
+            store_name = name
+            store_value = evolve_multi(value)
           else
-            super(localized_key(name, serializer), evolve(serializer, value))
+            store_name = localized_key(name, serializer)
+            store_value = evolve(serializer, value)
           end
+          super(store_name, store_value)
         end
         alias :[]= :store
 
@@ -182,23 +185,6 @@ module Mongoid
         # @since 1.0.0
         def multi_selection?(key)
           %w($and $or $nor).include?(key)
-        end
-
-        # Determines if the selection operator takes a list. Returns true for
-        # $in and $nin.
-        #
-        # @api private
-        #
-        # @example Does the selection operator take multiple values?
-        #   selector.multi_value?("$nin")
-        #
-        # @param [ String ] key The key to check.
-        #
-        # @return [ true, false ] If the key is $in or $nin.
-        #
-        # @since 2.1.1
-        def multi_value?(key)
-          %w($in $nin).include?(key)
         end
       end
     end

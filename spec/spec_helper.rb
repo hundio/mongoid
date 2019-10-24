@@ -32,6 +32,7 @@ end
 require 'support/authorization'
 require 'support/expectations'
 require 'support/macros'
+require 'support/cluster_config'
 require 'support/constraints'
 
 # Give MongoDB servers time to start up in CI environments
@@ -93,14 +94,9 @@ def array_filters_supported?
 end
 alias :sessions_supported? :array_filters_supported?
 
-def testing_geo_near?
-  $geo_near_enabled ||= (Mongoid::Clients.default
-                             .command(serverStatus: 1)
-                             .first['version'] < '4.1')
-end
-
 def transactions_supported?
-  Mongoid::Clients.default.cluster.next_primary.features.transactions_enabled?
+  features = Mongoid::Clients.default.cluster.next_primary.features
+  features.respond_to?(:transactions_enabled?) && features.transactions_enabled?
 end
 
 def testing_transactions?
@@ -161,7 +157,9 @@ RSpec.configure do |config|
 
   # Drop all collections and clear the identity map before each spec.
   config.before(:each) do
-    unless Mongoid.default_client.cluster.connected?
+    cluster = Mongoid.default_client.cluster
+    # Older drivers do not have a #connected? method
+    if cluster.respond_to?(:connected?) && !cluster.connected?
       Mongoid.default_client.reconnect
     end
     Mongoid.default_client.collections.each do |coll|
