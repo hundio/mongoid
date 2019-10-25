@@ -338,6 +338,10 @@ describe Mongoid::QueryCache do
 
     context "when query caching is enabled and the batch_size is set" do
 
+      before do
+        7.times { Band.create! views: 1 }
+      end
+
       around(:each) do |example|
         query_cache_enabled = Mongoid::QueryCache.enabled?
         Mongoid::QueryCache.enabled = true
