@@ -484,6 +484,22 @@ describe Mongoid::QueryCache do
     end
   end
 
+  context "when the initial query exhausts multi-batch results" do
+
+    before do
+      Mongoid::QueryCache.enabled = true
+      10.times { Band.create! }
+
+      Band.batch_size(4).all.to_a
+    end
+
+    it "does not cache the result" do
+      expect_query(3) do
+        Band.batch_size(4).all.to_a
+      end
+    end
+  end
+
   context 'when the initial query does not exhaust the results' do
     before do
       Mongoid::QueryCache.enabled = true
