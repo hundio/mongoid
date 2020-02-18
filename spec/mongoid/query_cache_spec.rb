@@ -338,10 +338,6 @@ describe Mongoid::QueryCache do
 
     context "when query caching is enabled and the batch_size is set" do
 
-      before do
-        7.times { Band.create! views: 1 }
-      end
-
       around(:each) do |example|
         query_cache_enabled = Mongoid::QueryCache.enabled?
         Mongoid::QueryCache.enabled = true
@@ -485,22 +481,6 @@ describe Mongoid::QueryCache do
     it "does not cache the query" do
       expect(Mongoid::QueryCache).to receive(:cache_table).never
       Band.collection.indexes.create_one(name: 1)
-    end
-  end
-
-  context "when the initial query exhausts multi-batch results" do
-
-    before do
-      Mongoid::QueryCache.enabled = true
-      10.times { Band.create! }
-
-      Band.batch_size(4).all.to_a
-    end
-
-    it "does not cache the result" do
-      expect_query(3) do
-        Band.batch_size(4).all.to_a
-      end
     end
   end
 

@@ -160,19 +160,6 @@ module Mongoid
         "#<Mongoid::QueryCache::CachedCursor:0x#{object_id} @view=#{@view.inspect}>"
       end
 
-      # Can this cursor actually be cached? Returns true in general; returns
-      # false if the cursor has both exhausted itself and invoked getMore.
-      #
-      # @example Is the cursor cacheable?
-      #   cursor.cacheable?
-      #
-      # @return [ Boolean ] Is the cursor cacheable?
-      #
-      # @since 7.0.0
-      def cacheable?
-        more? || !@get_more_called
-      end
-
       private
 
       def process(result)
@@ -265,9 +252,7 @@ module Mongoid
             cursor.to_a[0...limit.abs]
           end
         end
-        cursor ||= QueryCache.cache_table[cache_key]
-
-        cursor if cursor&.cacheable?
+        cursor || QueryCache.cache_table[cache_key]
       end
 
       def cache_key
