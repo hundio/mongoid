@@ -6,7 +6,7 @@ set -o errexit  # Exit the script with error if any of the commands fail
 # Supported/used environment variables:
 #       MONGODB_URI             Set the suggested connection MONGODB_URI (including credentials and topology info)
 #       RVM_RUBY                Define the Ruby version to test with, using its RVM identifier.
-#                               For example: "ruby-2.3" or "jruby-9.1"
+#                               For example: "ruby-3.0" or "jruby-9.2"
 
 . `dirname "$0"`/functions.sh
 
@@ -14,6 +14,13 @@ set_fcv
 set_env_vars
 
 setup_ruby
+
+# This is needed because of ruby 3.0.0.
+# We should remove this when moving to 3.0.1
+# See https://jira.mongodb.org/browse/MONGOID-5115
+if test "$RVM_RUBY" = "ruby-3.0"; then
+  gem update --system
+fi
 
 which bundle
 bundle --version
