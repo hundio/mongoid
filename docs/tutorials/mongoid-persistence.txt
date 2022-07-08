@@ -37,17 +37,17 @@ operations with examples.
 
        *Insert a document or multiple documents into the database, raising an
        error if a validation or server error occurs.*
-       
+
        *Pass a hash of attributes to create one document with the specified
        attributes, or an array of hashes to create multiple documents.
        If a single hash is passed, the corresponding document is returned.
        If an array of hashes is passed, an array of documents corresponding
        to the hashes is returned.*
-       
+
        *If a block is given to* ``create!`` *, it will be invoked with each
        document as the argument in turn prior to attempting to save that
        document.*
-       
+
        *If there is a problem saving any of the documents, such as
        a validation error or a server error, an exception is raised
        and, consequently, none of the documents are returned.
@@ -74,12 +74,12 @@ operations with examples.
 
        *Instantiate a document or multiple documents and, if validations pass,
        insert them into the database.*
-       
+
        ``create`` *is similar to* ``create!`` *but does not raise
        exceptions on validation errors. It still raises errors on server
        errors, such as trying to insert a document with an* ``_id`` *that
        already exists in the collection.*
-       
+
        *If any validation errors are encountered, the respective document
        is not inserted but is returned along with documents that were inserted.
        Use* ``persisted?`` *,* ``new_record?`` *or* ``errors`` *methods
@@ -101,13 +101,13 @@ operations with examples.
           Person.create(first_name: "Heinrich") do |doc|
             doc.last_name = "Heine"
           end # => Person instance
-          
+
           class Post
             include Mongoid::Document
-            
+
             validates_uniqueness_of :title
           end
-          
+
           posts = Post.create([{title: "test"}, {title: "test"}])
           # => array of two Post instances
           posts.map { |post| post.persisted? } # => [true, false]
@@ -116,7 +116,7 @@ operations with examples.
 
        *Save the changed attributes to the database atomically, or insert the document if
        new. Raises an exception if validations fail or there is a server error.*
-       
+
        *Returns true if the changed attributes were saved, raises an exception otherwise.*
      -
         .. code-block:: ruby
@@ -134,12 +134,12 @@ operations with examples.
 
        *Save the changed attributes to the database atomically, or insert the document
        if new.*
-       
+
        *Returns true if the changed attributes were saved. Returns false
        if there were any validation errors. Raises an exception if
        the document passed validation but there was a server error during
        the save.*
-       
+
        *Pass* ``validate: false`` *option to bypass validations.*
      -
         .. code-block:: ruby
@@ -206,10 +206,9 @@ operations with examples.
        provided time field. This will cascade the touch to all*
        ``belongs_to`` *associations of the document with the option set.
        This operation skips validations and callbacks.*
-       
-       *Attempting to touch a destroyed document will raise* ``FrozenError``
-       * (as of Ruby 2.5,* ``RuntimeError`` *on previous Ruby versions),
-       same as if attempting to update an attribute on a destroyed
+
+       *Attempting to touch a destroyed document will raise* ``FrozenError``,
+       *same as if attempting to update an attribute on a destroyed
        document.*
      -
         .. code-block:: ruby
@@ -377,9 +376,9 @@ are not invoked.
        *Updates an attribute on the model instance and, if the instance
        is already persisted, performs an atomic $set on the field, bypassing
        validations.*
-       
+
        ``set`` *can also deeply set values on Hash fields.*
-       
+
        ``set`` *can also deeply set values on* ``embeds_one`` *associations.
        If such an association's document is nil, one will be created prior
        to the update.*
@@ -402,14 +401,14 @@ are not invoked.
 
     	  class Post
     	    include Mongoid::Document
-    	    
+
     	    field :metadata, type: Hash
     	  end
-    	  
+
           post = Post.create!
           post.set('metadata.published_at' => Time.now)
           post.metadata['published_at'] # => Time instance
-          
+
           post.set('metadata.approved.today' => true)
           post.metadata['approved'] # => {'today' => true}
 
@@ -427,7 +426,7 @@ are not invoked.
 
             field :route, type: String
           end
-          
+
           flight = Flight.create!
           flight.plan # => nil
           flight.set('plan.route', 'test route')

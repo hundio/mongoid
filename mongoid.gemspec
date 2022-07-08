@@ -31,7 +31,7 @@ Gem::Specification.new do |s|
     warn "[#{s.name}] Warning: No private key present, creating unsigned gem."
   end
 
-  s.required_ruby_version     = ">= 2.2"
+  s.required_ruby_version     = ">= 2.6"
   s.required_rubygems_version = ">= 1.3.6"
 
   if RUBY_VERSION.start_with?('2.')
