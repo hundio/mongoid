@@ -275,13 +275,23 @@ supported by Mongoid.
    :class: compatibility-large no-padding
 
    * - Mongoid
+     - Rails 7.1
      - Rails 7.0
      - Rails 6.1
      - Rails 6.0
      - Rails 5.2
      - Rails 5.1
 
+   * - 8.1
+     - |checkmark| [#rails-7.1]_
+     - |checkmark|
+     - |checkmark|
+     - |checkmark|
+     - |checkmark| [#rails-5-ruby-3.0]_
+     -
+
    * - 8.0
+     - |checkmark| [#rails-7.1]_
      - |checkmark|
      - |checkmark|
      - |checkmark|
@@ -289,6 +299,7 @@ supported by Mongoid.
      -
 
    * - 7.5
+     -
      - |checkmark|
      - |checkmark|
      - |checkmark|
@@ -296,6 +307,7 @@ supported by Mongoid.
      - D
 
    * - 7.4
+     -
      - |checkmark|
      - |checkmark|
      - |checkmark|
@@ -304,6 +316,7 @@ supported by Mongoid.
 
    * - 7.3
      -
+     - |checkmark| [#rails-7-Mongoid-7.3]_
      - |checkmark|
      - |checkmark|
      - |checkmark| [#rails-5-ruby-3.0]_
@@ -312,6 +325,7 @@ supported by Mongoid.
      -
 
    * - 7.2
+     -
      -
      - |checkmark| [#rails-6.1]_
      - |checkmark|
@@ -322,6 +336,7 @@ supported by Mongoid.
 
    * - 7.1
      -
+     -
      - |checkmark| [#rails-6.1]_
      - |checkmark|
      - |checkmark|
@@ -331,6 +346,7 @@ supported by Mongoid.
 
    * - 7.0
      -
+     -
      - |checkmark| [#rails-6.1]_
      - |checkmark| [#rails-6]_
      - |checkmark|
@@ -339,6 +355,7 @@ supported by Mongoid.
      -
 
    * - 6.4
+     -
      -
      -
      -
@@ -404,5 +421,13 @@ supported by Mongoid.
 .. [#rails-5-ruby-3.0] Using Rails 5.x with Ruby 3 is not supported.
 
 .. [#rails-6] Rails 6.0 requires Mongoid 7.0.5 or later.
+
+.. [#rails-6.1] Rails 6.1 requires Mongoid 7.0.12, 7.1.7 or 7.2.1 in the
+  respective 7.0, 7.1 and 7.2 stable branches.
+
+.. [#rails-7-Mongoid-7.3] Rails 7.x requires Mongoid 7.3.4 or later.
+
+.. [#rails-7.1] Rails 7.1 requires Mongoid 8.0.7 or 8.1.3 in the respective
+  8.0 and 8.1 stable branches.
 
 .. include:: /includes/unicode-checkmark.rst
