@@ -49,9 +49,19 @@ module Mongoid
       #
       # @since 3.1.0
       def disconnect
-        clients.values.each do |client|
-          client.close
-        end
+        clients.each_value(&:close)
+        true
+      end
+
+      # Reconnect all active clients.
+      #
+      # @example Reconnect all active clients.
+      #   Mongoid::Clients.reconnect
+      #
+      # @return [ true ] True.
+      def reconnect
+        clients.each_value(&:reconnect)
+        true
       end
 
       # Get a client with the provided name.
