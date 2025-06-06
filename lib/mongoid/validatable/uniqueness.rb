@@ -86,6 +86,20 @@ module Mongoid
         !(options[:case_sensitive] == false)
       end
 
+      # Return collation locale for case-insensitive validation
+      #
+      # @api private
+      #
+      # @example Return collation locale
+      #   validator.locale
+      #
+      # @return [ String ] The locale to use in collation.
+      #
+      # @since 7.1.0
+      def locale
+        options[:locale] || "en_US"
+      end
+
       # Create the validation criteria.
       #
       # @api private
@@ -104,6 +118,7 @@ module Mongoid
       def create_criteria(base, document, attribute, value)
         criteria = scope(base.unscoped, document, attribute)
         criteria.selector.update(criterion(document, attribute, value.mongoize))
+        criteria.options.store(:collation, locale: locale, strength: 2) unless case_sensitive? || document.embedded?
         criteria
       end
 
@@ -125,10 +140,10 @@ module Mongoid
         field = document.database_field_name(attribute)
 
         if value && localized?(document, field)
-          conditions = (value || {}).inject([]) { |acc, (k,v)| acc << { "#{field}.#{k}" => filter(v) }}
+          conditions = (value || {}).inject([]) { |acc, (k,v)| acc << { "#{field}.#{k}" => filter(document, v) }}
           selector = { "$or" => conditions }
         else
-          selector = { field => filter(value) }
+          selector = { field => filter(document, value) }
         end
 
         if document.persisted? && !document.embedded?
@@ -142,15 +157,16 @@ module Mongoid
       # @api private
       #
       # @example Filter the value.
-      #   validator.filter("testing")
+      #   validator.filter(doc, "testing")
       #
+      # @param [ Document ] document The document containing the given value.
       # @param [ Object ] value The value to filter.
       #
       # @return [ Object, Regexp ] The value, filtered or not.
       #
       # @since 2.3.0
-      def filter(value)
-        !case_sensitive? && value ? /\A#{Regexp.escape(value.to_s)}$/i : value
+      def filter(document, value)
+        document.embedded? && !case_sensitive? && value ? /\A#{Regexp.escape(value.to_s)}$/i : value
       end
 
       # Scope the criteria to the scope options provided.
