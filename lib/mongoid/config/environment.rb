@@ -27,26 +27,39 @@ module Mongoid
       end
 
       # Load the yaml from the provided path and return the settings for the
-      # current environment.
+      # specified environment, or for the current Mongoid environment.
       #
       # @example Load the yaml.
       #   Environment.load_yaml("/work/mongoid.yml")
       #
       # @param [ String ] path The location of the file.
+      # @param [ String | Symbol ] environment Optional environment name to
+      #   override the current Mongoid environment.
       #
       # @return [ Hash ] The settings.
       #
-      # @since 2.3.0
+      # @api private
       def load_yaml(path, environment = nil)
         env = environment ? environment.to_s : env_name
-        contents = File.new(path).read
-        if contents.empty?
-          raise Mongoid::Errors::EmptyConfigFile.new(path)
-        end
-        data = YAML.load(ERB.new(contents).result)
-        unless data.is_a?(Hash)
-          raise Mongoid::Errors::InvalidConfigFile.new(path)
-        end
+
+        contents = File.read(path)
+        raise Mongoid::Errors::EmptyConfigFile.new(path) if contents.empty?
+
+        # These are the classes that can be used in a Mongoid
+        # configuration file in addition to standard YAML types.
+        permitted_classes = [
+          # Symbols occur as values for read preference, for example.
+          Symbol,
+          # BSON::Binary occur as keyId values for FLE (more precisely,
+          # the keyIds are UUIDs).
+          BSON::Binary
+        ]
+
+        result = ERB.new(contents).result
+        data = YAML.safe_load(result, permitted_classes: permitted_classes, aliases: true)
+
+        raise Mongoid::Errors::InvalidConfigFile.new(path) unless data.is_a?(Hash)
+
         data[env]
       end
     end
