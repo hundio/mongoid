@@ -54,7 +54,7 @@ module Mongoid
       # @return [ Document ] The document.
       #
       # @since 4.0.0
-      def push(pushes, position: nil)
+      def push(pushes, position = nil)
         modifiers = { "$position" => position }.reject { |_,val| val.nil? }
 
         prepare_atomic_operation do |ops|
